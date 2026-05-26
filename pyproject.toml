@@ -12,6 +12,7 @@ dependencies = [
     "requests>=2.31",
     "matplotlib>=3.8",
     "pyarrow>=15.0",
+    "flask>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,9 @@ gridwatch = "gridwatch.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"gridwatch.web" = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

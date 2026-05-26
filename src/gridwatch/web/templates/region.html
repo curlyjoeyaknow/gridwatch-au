@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} — GridWatch AU{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('dashboard') }}">&larr; Dashboard</a></p>
+<h1>{{ code }} <span class="muted">(last 7 days)</span></h1>
+
+<div class="card">
+  <p>
+    <span class="pill">Renewable {{ "%.1f"|format(s.renewable_share_pct) }}%</span>
+    &nbsp; Total generation: <strong>{{ "%.0f"|format(s.total_generation_mwh) }} MWh</strong>
+    &nbsp;·&nbsp; Emissions: <strong>{{ "%.0f"|format(s.total_emissions_tco2e) }} tCO₂e</strong>
+    &nbsp;·&nbsp; Intensity: <strong>{{ "%.3f"|format(s.emissions_intensity_tco2e_per_mwh) }} tCO₂e/MWh</strong>
+    &nbsp;·&nbsp; Avg price: <strong>{{ s.avg_price_aud_mwh if s.avg_price_aud_mwh is not none else "—" }} AUD/MWh</strong>
+  </p>
+  <p class="muted">Generation by fuel (MWh): {{ s.by_category_mwh }}</p>
+</div>
+
+<h2>Charts</h2>
+<div class="grid">
+  {% for kind in region_charts %}
+  <div class="card">
+    <img class="chart" src="{{ url_for('chart_region', kind=kind, code=code) }}" alt="{{ kind }} for {{ code }}">
+  </div>
+  {% endfor %}
+</div>
+
+<p style="margin-top:1rem">
+  <a class="btnlink" href="{{ url_for('table', region=code) }}">Browse {{ code }} readings in the data table &rarr;</a>
+</p>
+{% endblock %}

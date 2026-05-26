@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Data table — GridWatch AU{% endblock %}
+{% block content %}
+<h1>Data table</h1>
+
+<form class="filters" method="get" action="{{ url_for('table') }}">
+  <div><label>Region</label><input name="region" value="{{ args.get('region','') }}" placeholder="e.g. SA1" size="6"></div>
+  <div><label>Metric</label>
+    <select name="metric">
+      <option value="">any</option>
+      {% for m in ["power","emissions","price","demand"] %}
+        <option value="{{ m }}" {{ 'selected' if args.get('metric')==m }}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div><label>Fuel tech</label><input name="fuel_tech" value="{{ args.get('fuel_tech','') }}" placeholder="e.g. wind" size="10"></div>
+  <div><label>Sort by</label>
+    <select name="sort_by">
+      {% for col in sort_options %}
+        <option value="{{ col }}" {{ 'selected' if args.get('sort_by')==col }}>{{ col }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div><label><input type="checkbox" name="descending" {{ 'checked' if args.get('descending') }}> desc</label></div>
+  <div><label><input type="checkbox" name="renewable_only" {{ 'checked' if args.get('renewable_only') }}> renewable only</label></div>
+  <div><button type="submit">Apply</button></div>
+</form>
+
+{% if error %}
+  <div class="card"><strong>Error:</strong> {{ error }}</div>
+{% elif result %}
+  <p class="muted">
+    {% if result.total %}showing {{ result.offset + 1 }}–{{ result.offset + result.shown }} of {{ result.total }}{% else %}no rows match{% endif %}
+    &nbsp;·&nbsp; <a href="{{ url_for('table_csv', **args) }}">Export CSV</a>
+  </p>
+  <table>
+    <thead><tr>{% for col in columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in result.rows %}
+      <tr>{% for col in columns %}<td class="{{ 'num' if col=='value' }}">{{ row.get(col) if row.get(col) is not none else '' }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="margin-top:.8rem">
+    {% set qp = args.to_dict() %}
+    {% if page > 1 %}{% set _ = qp.update({'page': page-1}) %}<a href="{{ url_for('table', **qp) }}">&larr; Prev</a>{% endif %}
+    &nbsp; page {{ page }} &nbsp;
+    {% if result.offset + result.shown < result.total %}{% set _ = qp.update({'page': page+1}) %}<a href="{{ url_for('table', **qp) }}">Next &rarr;</a>{% endif %}
+  </p>
+{% endif %}
+{% endblock %}

@@ -41,7 +41,22 @@ pip install -e ".[dev]"
 pytest -q                     # full suite (offline; uses a captured API fixture)
 pytest -q -m "not slow"       # fast suite (what pre-commit runs)
 ruff check src tests          # lint
-python -m gridwatch.cli       # run the menu-driven app
+python -m gridwatch.cli       # run the menu-driven CLI
+python -m gridwatch.web       # run the web dashboard → http://127.0.0.1:8000
+```
+
+## Web dashboard
+A browser UI (Flask) over the same data: a dashboard (region comparison + cross-region
+charts), per-region pages (summary + all chart types), and a **queryable data table**
+(filter/sort/paginate + CSV export). It reads from the local append-only ledger; the
+**Refresh** button bulk-fetches live. Point it at a ledger with `GRIDWATCH_LEDGER`:
+```bash
+GRIDWATCH_LEDGER=data/ledger.jsonl python -m gridwatch.web
+```
+**Deploy (Docker + gunicorn):**
+```bash
+docker build -t gridwatch-au .
+docker run -p 8000:8000 -v "$PWD/data:/data" gridwatch-au
 ```
 
 ## Example (live, last 7 days)
