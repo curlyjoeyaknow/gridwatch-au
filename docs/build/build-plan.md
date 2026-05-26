@@ -55,13 +55,13 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 | 1.1 | `domain/region.py` — Region aggregate (encapsulated readings, find/filter) | ✅ |
 | 1.2 | `domain/analytics.py` — pure summary functions (share, intensity, price) | ✅ |
 
-### Track 2 — Application  ⬜
-| 2.1 | `application/manager.py` — `EnergyGridManager` facade (CRUD/search/import/save) | ⬜ |
+### Track 2 — Application  ✅
+| 2.1 | `application/manager.py` — `EnergyGridManager` facade (CRUD/search/import/save) | ✅ |
 
-### Track 3 — Adapters  ⬜
-| 3.1 | `adapters/openelectricity.py` — real `DataSource`, vendor→`Reading` mapping | ⬜ |
-| 3.2 | `adapters/fake_source.py` — `FakeDataSource` for tests | ⬜ |
-| 3.3 | `adapters/json_repo.py`, `adapters/csv_repo.py` — `Repository` impls | ⬜ |
+### Track 3 — Adapters  ✅
+| 3.1 | `adapters/openelectricity.py` — real `DataSource`, vendor→`Reading` mapping | ✅ |
+| 3.2 | `adapters/fake_source.py` — `FakeDataSource` for tests | ✅ |
+| 3.3 | `adapters/json_repo.py`, `adapters/csv_repo.py` — `Repository` impls | ✅ |
 
 ### Track 4 — Visualisations  ⬜
 | 4.1 | `viz/charts.py` — fuel mix · renewable share · emissions · price (PNG) | ⬜ |
