@@ -91,3 +91,8 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 ### Track 10 — Web dashboard  ✅ (ADR-008)
 | 10.1 | `web/` Flask driving adapter: dashboard · region page · data table · CSV · charts · refresh | ✅ |
 | 10.2 | Dockerfile + gunicorn (deploy-ready); `python -m gridwatch.web` (local) | ✅ |
+
+### Track 11 — Aggregation + trends  ✅
+| 11.1 | `domain/aggregate.py` — bucket by hour/day/week/month → `PeriodPoint` | ✅ |
+| 11.2 | `viz.period_trend_chart`; manager `trends()` | ✅ |
+| 11.3 | Web `/trends` (+ CSV + trend chart) and CLI trends (option 14) | ✅ |

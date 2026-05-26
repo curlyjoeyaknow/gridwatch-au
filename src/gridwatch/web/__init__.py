@@ -29,6 +29,7 @@ from gridwatch.adapters.openelectricity import OpenElectricityClient
 from gridwatch.application.manager import EnergyGridManager
 from gridwatch.application.query import COLUMNS
 from gridwatch.contracts.regions import NEM_REGIONS
+from gridwatch.domain.aggregate import PERIODS, TREND_METRICS
 from gridwatch.exceptions import GridWatchError
 from gridwatch.viz import charts
 
@@ -48,6 +49,18 @@ _REGION_CHARTS = {
 }
 PAGE_SIZE = 50
 SORT_OPTIONS = ["timestamp", "value", "region", "metric", "fuel_tech"]
+TREND_COLUMNS = [
+    "period",
+    "region",
+    "generation_mwh",
+    "renewable_share_pct",
+    "emissions_tco2e",
+    "emissions_intensity",
+    "avg_price",
+    "peak_price",
+    "avg_demand_mw",
+    "peak_demand_mw",
+]
 
 
 def _parse_filters(args) -> dict:
@@ -143,6 +156,62 @@ def create_app(*, manager=None, source=None, ledger=None, chart_dir=None) -> Fla
             mimetype="text/csv",
             headers={"Content-Disposition": "attachment; filename=gridwatch.csv"},
         )
+
+    @app.get("/trends")
+    def trends():
+        period = (request.args.get("period") or "day").strip()
+        region = (request.args.get("region") or "").strip() or None
+        metric = (request.args.get("metric") or "renewable_share").strip()
+        error = None
+        points = []
+        try:
+            points = mgr.trends(period, region=region)
+        except GridWatchError as exc:
+            error = str(exc)
+        return render_template(
+            "trends.html",
+            points=[p.as_dict() for p in points],
+            columns=TREND_COLUMNS,
+            error=error,
+            period=period,
+            region=region or "",
+            metric=metric,
+            periods=PERIODS,
+            metrics=TREND_METRICS,
+            args=request.args,
+        )
+
+    @app.get("/trends.csv")
+    def trends_csv():
+        period = (request.args.get("period") or "day").strip()
+        region = (request.args.get("region") or "").strip() or None
+        try:
+            points = mgr.trends(period, region=region)
+        except GridWatchError as exc:
+            abort(400, str(exc))
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=TREND_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        for point in points:
+            writer.writerow(point.as_dict())
+        return Response(
+            buffer.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=gridwatch-trends.csv"},
+        )
+
+    @app.get("/charts/trend.png")
+    def chart_trend():
+        period = (request.args.get("period") or "day").strip()
+        region = (request.args.get("region") or "").strip() or None
+        metric = (request.args.get("metric") or "renewable_share").strip()
+        path = app.config["chart_dir"] / f"trend_{metric}_{region or 'all'}_{period}.png"
+        try:
+            points = mgr.trends(period, region=region)
+            charts.period_trend_chart(points, metric, path, period=period)
+        except GridWatchError:
+            abort(404)
+        return send_file(path, mimetype="image/png")
 
     @app.get("/charts/<kind>.png")
     def chart_all(kind):
