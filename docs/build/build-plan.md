@@ -42,18 +42,18 @@ Each track lands via a reviewed PR into `main` (see `MERGE-PROTOCOL.md`).
 
 Legend: ✅ done · 🟡 partial · ⬜ todo
 
-### Track 0 — Contracts spine  ⬜
+### Track 0 — Contracts spine  ✅
 | # | Task | Status |
 |---|------|--------|
-| 0.1 | `exceptions.py` — `GridWatchError` hierarchy | ⬜ |
-| 0.2 | `contracts/fueltech.py` — `FuelCategory` + taxonomy + renewable policy (ADR-003) | ⬜ |
-| 0.3 | `contracts/readings.py` — `Reading` ABC + Power/Emission/Price/Demand | ⬜ |
-| 0.4 | `contracts/summary.py` — `RegionSummary` value object | ⬜ |
-| 0.5 | `ports/datasource.py`, `ports/repository.py` — port ABCs | ⬜ |
+| 0.1 | `exceptions.py` — `GridWatchError` hierarchy | ✅ |
+| 0.2 | `contracts/fueltech.py` — `FuelCategory` + taxonomy + renewable policy (ADR-003) | ✅ |
+| 0.3 | `contracts/readings.py` — `Reading` ABC + Power/Emission/Price/Demand | ✅ |
+| 0.4 | `contracts/summary.py` — `RegionSummary` value object | ✅ |
+| 0.5 | `ports/datasource.py`, `ports/repository.py` — port ABCs | ✅ |
 
-### Track 1 — Domain  ⬜
-| 1.1 | `domain/region.py` — Region aggregate (encapsulated readings, find/filter) | ⬜ |
-| 1.2 | `domain/analytics.py` — pure summary functions (share, intensity, price) | ⬜ |
+### Track 1 — Domain  ✅
+| 1.1 | `domain/region.py` — Region aggregate (encapsulated readings, find/filter) | ✅ |
+| 1.2 | `domain/analytics.py` — pure summary functions (share, intensity, price) | ✅ |
 
 ### Track 2 — Application  ⬜
 | 2.1 | `application/manager.py` — `EnergyGridManager` facade (CRUD/search/import/save) | ⬜ |
