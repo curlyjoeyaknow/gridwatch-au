@@ -3,7 +3,9 @@
 {% block content %}
 <h1>Data table</h1>
 
-<form class="filters" method="get" action="{{ url_for('table') }}">
+<p class="muted">Charts below update live as you change the filters; the table updates when you press Apply.</p>
+
+<form class="filters" id="filters" method="get" action="{{ url_for('table') }}">
   <div><label>Region</label><input name="region" value="{{ args.get('region','') }}" placeholder="e.g. SA1" size="6"></div>
   <div><label>Metric</label>
     <select name="metric">
@@ -25,6 +27,12 @@
   <div><label><input type="checkbox" name="renewable_only" {{ 'checked' if args.get('renewable_only') }}> renewable only</label></div>
   <div><button type="submit">Apply</button></div>
 </form>
+
+<div class="grid">
+  <div class="card"><canvas id="lineChart" height="150"></canvas></div>
+  <div class="card"><canvas id="barChart" height="150"></canvas></div>
+</div>
+<p class="muted" id="chartstatus">loading charts…</p>
 
 {% if error %}
   <div class="card"><strong>Error:</strong> {{ error }}</div>
@@ -49,4 +57,53 @@
     {% if result.offset + result.shown < result.total %}{% set _ = qp.update({'page': page+1}) %}<a href="{{ url_for('table', **qp) }}">Next &rarr;</a>{% endif %}
   </p>
 {% endif %}
+
+<script src="{{ url_for('static', filename='chart.min.js') }}"></script>
+<script>
+const PALETTE = ['#2e8b57','#a0522d','#1f77b4','#d62728','#9467bd','#ff7f0e','#17becf','#8c564b'];
+let lineChart, barChart;
+
+async function updateCharts() {
+  const form = document.getElementById('filters');
+  const params = new URLSearchParams(new FormData(form));
+  const status = document.getElementById('chartstatus');
+  let data;
+  try {
+    const resp = await fetch('{{ url_for("table_json") }}?' + params.toString());
+    data = await resp.json();
+    if (!resp.ok) { status.textContent = 'Error: ' + (data.error || resp.status); return; }
+  } catch (e) { status.textContent = 'Could not load charts.'; return; }
+
+  status.textContent = data.count + ' reading(s) match · unit: ' + (data.unit || '—');
+  const datasets = data.series.map((s, i) => ({
+    label: s.label, data: s.data, borderColor: PALETTE[i % PALETTE.length],
+    backgroundColor: PALETTE[i % PALETTE.length], spanGaps: true, tension: 0.25, pointRadius: 0,
+  }));
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: { labels: data.labels, datasets },
+    options: { responsive: true, animation: false,
+      plugins: { title: { display: true, text: 'Filtered values over time (hourly mean)' },
+                 legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+      scales: { x: { ticks: { maxTicksLimit: 10, font: { size: 9 } } } } },
+  });
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: { labels: data.breakdown.labels,
+            datasets: [{ label: 'avg ' + (data.unit || ''), data: data.breakdown.avg, backgroundColor: '#2e8b57' }] },
+    options: { responsive: true, animation: false,
+      plugins: { title: { display: true, text: 'Average by fuel / metric' }, legend: { display: false } } },
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateCharts();
+  let timer;
+  document.getElementById('filters').addEventListener('input', () => {
+    clearTimeout(timer); timer = setTimeout(updateCharts, 300);
+  });
+});
+</script>
 {% endblock %}
