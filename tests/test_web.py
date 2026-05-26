@@ -88,6 +88,31 @@ def test_chart_for_empty_region_404(client):
     assert client.get("/charts/fuelmix/NSW1.png").status_code == 404
 
 
+def test_trends_page_renders_summary(client):
+    resp = client.get("/trends?period=day")
+    assert resp.status_code == 200
+    assert b"summary" in resp.data.lower()
+
+
+def test_trends_bad_period_shows_error(client):
+    resp = client.get("/trends?period=fortnight")
+    assert resp.status_code == 200
+    assert b"rror" in resp.data  # "Error:"
+
+
+def test_trend_chart_png(client):
+    resp = client.get("/charts/trend.png?period=day&metric=renewable_share")
+    assert resp.status_code == 200
+    assert resp.mimetype == "image/png"
+
+
+def test_trends_csv_export(client):
+    resp = client.get("/trends.csv?period=day")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/csv"
+    assert b"period,region,generation_mwh,renewable_share_pct" in resp.data
+
+
 def test_refresh_bulk_fetches_and_loads(tmp_path):
     source = FakeDataSource({"SA1": _readings("SA1"), "TAS1": _readings("TAS1")})
     ledger = JsonlEventLedger(tmp_path / "ledger.jsonl")

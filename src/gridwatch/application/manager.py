@@ -18,6 +18,7 @@ from gridwatch.contracts.readings import Reading
 from gridwatch.contracts.regions import NEM_REGIONS, validate_region
 from gridwatch.contracts.summary import RegionSummary
 from gridwatch.domain import analytics
+from gridwatch.domain.aggregate import PeriodPoint, aggregate
 from gridwatch.domain.region import Region
 from gridwatch.domain.replay import replay_to_regions
 from gridwatch.exceptions import DataSourceError, RegionNotFoundError
@@ -124,6 +125,10 @@ class EnergyGridManager:
     def query(self, **criteria) -> QueryResult:
         """Filter/sort/paginate across all loaded readings (see query_readings)."""
         return query_readings(self.all_readings(), **criteria)
+
+    def trends(self, period: str, region: str | None = None) -> list[PeriodPoint]:
+        """Aggregate all loaded readings into per-period points (see aggregate)."""
+        return aggregate(self.all_readings(), period, region=region)
 
     # --- insight ----------------------------------------------------------
     def summarise(self, code: str) -> RegionSummary:

@@ -9,7 +9,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from gridwatch.contracts.fueltech import FuelCategory
-from gridwatch.contracts.readings import EmissionReading, PowerReading, PriceReading, Reading
+from gridwatch.contracts.readings import (
+    DemandReading,
+    EmissionReading,
+    PowerReading,
+    PriceReading,
+    Reading,
+)
 from gridwatch.contracts.summary import RegionSummary
 
 
@@ -57,6 +63,14 @@ def price_stats(readings: Iterable[Reading]) -> tuple[float | None, float | None
     if not prices:
         return (None, None)
     return (sum(prices) / len(prices), max(prices))
+
+
+def demand_stats(readings: Iterable[Reading]) -> tuple[float | None, float | None]:
+    """(average, peak) demand in MW, or (None, None) if no demand readings."""
+    demand = [r.value for r in readings if isinstance(r, DemandReading)]
+    if not demand:
+        return (None, None)
+    return (sum(demand) / len(demand), max(demand))
 
 
 def summarise(region) -> RegionSummary:

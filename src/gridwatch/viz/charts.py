@@ -200,6 +200,46 @@ def emissions_over_time(region: Region, path: str | Path) -> Path:
     return _save(fig, path)
 
 
+_TREND_METRICS = {
+    "renewable_share": ("Renewable share (%)", lambda p: p.renewable_share * 100),
+    "total_generation_mwh": ("Generation (MWh)", lambda p: p.total_generation_mwh),
+    "total_emissions_tco2e": ("Emissions (tCO₂e)", lambda p: p.total_emissions_tco2e),
+    "emissions_intensity": ("Emissions intensity (tCO₂e/MWh)", lambda p: p.emissions_intensity),
+    "avg_price": ("Avg price (AUD/MWh)", lambda p: p.avg_price or 0.0),
+    "avg_demand_mw": ("Avg demand (MW)", lambda p: p.avg_demand_mw or 0.0),
+}
+
+
+def period_trend_chart(points, metric: str, path: str | Path, *, period: str = "period") -> Path:
+    """Line of an aggregated metric across period buckets; one line per region."""
+    if not points:
+        raise ValidationError("no aggregated data to plot")
+    if metric not in _TREND_METRICS:
+        raise ValidationError(f"unknown trend metric {metric!r}")
+    label, accessor = _TREND_METRICS[metric]
+    by_region: dict[str, list] = defaultdict(list)
+    for point in points:
+        by_region[point.region].append(point)
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    for region_code, pts in sorted(by_region.items()):
+        pts = sorted(pts, key=lambda p: p.period_start)
+        ax.plot(
+            [p.period_start for p in pts],
+            [accessor(p) for p in pts],
+            marker="o",
+            markersize=3,
+            label=region_code,
+        )
+    if len(by_region) > 1:
+        ax.legend(fontsize=8)
+    if metric == "renewable_share":
+        ax.set_ylim(0, 100)
+    ax.set_ylabel(label)
+    ax.set_title(f"{label} by {period}")
+    fig.autofmt_xdate()
+    return _save(fig, path)
+
+
 def price_duration_curve(region: Region, path: str | Path) -> Path:
     """Price duration curve: spot prices sorted high→low vs % of intervals."""
     prices = sorted((r.value for r in region.filter(metric="price")), reverse=True)

@@ -11,10 +11,10 @@ __pycache__/
 .coverage
 htmlcov/
 
-# generated artefacts
-outputs/*.png
-data/*.json
-data/*.csv
+# generated artefacts (datasets, ledgers, charts) — never commit these
+data/*
+outputs/*
+.ruff_cache/
 
 # keep the directories themselves
 !data/.gitkeep
