@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}GridWatch AU{% endblock %}</title>
+  <style>
+    :root { --green:#2e8b57; --ink:#1c2733; --muted:#5b6b7a; --line:#e2e8ee; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+           color:var(--ink); background:#f7f9fb; line-height:1.45; }
+    header { background:var(--ink); color:#fff; padding:.7rem 1.2rem; display:flex;
+             align-items:center; gap:1.2rem; flex-wrap:wrap; }
+    header a { color:#fff; text-decoration:none; font-weight:600; }
+    header .brand { font-size:1.1rem; }
+    header nav { display:flex; gap:1rem; }
+    header form { margin-left:auto; }
+    button { background:var(--green); color:#fff; border:0; padding:.4rem .8rem;
+             border-radius:6px; font:inherit; cursor:pointer; }
+    main { max-width:1100px; margin:1.4rem auto; padding:0 1.2rem; }
+    h1 { font-size:1.5rem; } h2 { font-size:1.15rem; margin-top:1.6rem; }
+    table { border-collapse:collapse; width:100%; background:#fff; font-size:.92rem; }
+    th, td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line); }
+    th { background:#eef3f7; }
+    .muted { color:var(--muted); } .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1rem; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:1rem; }
+    img.chart { width:100%; height:auto; border:1px solid var(--line); border-radius:8px; background:#fff; }
+    form.filters { display:flex; gap:.6rem; flex-wrap:wrap; align-items:end; margin:.6rem 0 1rem; }
+    form.filters label { font-size:.8rem; color:var(--muted); display:block; }
+    input, select { font:inherit; padding:.3rem .4rem; border:1px solid var(--line); border-radius:5px; }
+    .pill { background:var(--green); color:#fff; padding:.1rem .5rem; border-radius:99px; font-size:.8rem; }
+    a.btnlink { text-decoration:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="{{ url_for('dashboard') }}">⚡ GridWatch AU</a>
+    <nav>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('table') }}">Data table</a>
+    </nav>
+    <form method="post" action="{{ url_for('refresh') }}">
+      <button type="submit">↻ Refresh (live fetch)</button>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
