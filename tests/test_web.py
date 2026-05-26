@@ -105,6 +105,27 @@ def test_table_json_respects_renewable_filter(client):
     assert [s["label"] for s in data["series"]] == ["wind"]
 
 
+def test_table_json_includes_paginated_rows(client):
+    data = client.get("/table.json?metric=power").get_json()
+    assert "page" in data
+    page = data["page"]
+    assert page["total"] == data["count"]
+    assert page["page"] == 1 and page["columns"]
+    assert len(page["rows"]) <= page["page_size"]
+
+
+def test_table_json_page_offset(client):
+    data = client.get("/table.json?metric=power&page=2").get_json()
+    assert data["page"]["page"] == 2
+    assert data["page"]["offset"] == data["page"]["page_size"]
+
+
+def test_table_json_daily_bucket_not_more_labels_than_hourly(client):
+    hourly = client.get("/table.json?metric=power&bucket=hour").get_json()
+    daily = client.get("/table.json?metric=power&bucket=day").get_json()
+    assert 1 <= len(daily["labels"]) <= len(hourly["labels"])
+
+
 def test_table_json_bad_sort_returns_400(client):
     resp = client.get("/table.json?sort_by=nope")
     assert resp.status_code == 400

@@ -68,11 +68,18 @@ TREND_COLUMNS = [
 MAX_SERIES = 8
 
 
-def _series_payload(rows: list[dict]) -> dict:
+def _bucketer(bucket: str):
+    """Return (floor_fn, strftime_fmt) for the chart time resolution."""
+    if bucket == "day":
+        return (lambda ts: ts.replace(hour=0, minute=0, second=0, microsecond=0), "%m-%d")
+    return (lambda ts: ts.replace(minute=0, second=0, microsecond=0), "%m-%d %H:00")
+
+
+def _series_payload(rows: list[dict], bucket: str = "hour") -> dict:
     """Build a compact, chart-ready payload from filtered reading rows.
 
-    Groups by fuel_tech (else metric), buckets values into hourly means for a time
-    series, and a per-group average for a breakdown bar. Bounded in size for the browser.
+    Groups by fuel_tech (else metric), buckets values into per-period means for a time
+    series, and a per-group average/sum for a breakdown bar. Bounded for the browser.
     """
     empty = {
         "count": 0,
@@ -84,6 +91,7 @@ def _series_payload(rows: list[dict]) -> dict:
     if not rows:
         return empty
 
+    floor, fmt = _bucketer(bucket)
     by_bucket: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     label_order: dict[str, datetime] = {}
     group_values: dict[str, list[float]] = defaultdict(list)
@@ -91,8 +99,8 @@ def _series_payload(rows: list[dict]) -> dict:
 
     for row in rows:
         group = row.get("fuel_tech") or row.get("metric")
-        ts = datetime.fromisoformat(row["timestamp"]).replace(minute=0, second=0, microsecond=0)
-        label = ts.strftime("%m-%d %H:00")
+        ts = floor(datetime.fromisoformat(row["timestamp"]))
+        label = ts.strftime(fmt)
         value = float(row["value"])
         by_bucket[group][label].append(value)
         label_order.setdefault(label, ts)
@@ -206,11 +214,26 @@ def create_app(*, manager=None, source=None, ledger=None, chart_dir=None) -> Fla
     @app.get("/table.json")
     def table_json():
         filters = _parse_filters(request.args)
+        bucket = "day" if (request.args.get("bucket") == "day") else "hour"
+        page = max(int(request.args.get("page") or 1), 1)
         try:
             result = mgr.query(limit=None, **filters)
         except GridWatchError as exc:
             return {"error": str(exc)}, 400
-        return _series_payload(result.rows)
+        rows = result.rows
+        payload = _series_payload(rows, bucket)
+        offset = (page - 1) * PAGE_SIZE
+        page_rows = rows[offset : offset + PAGE_SIZE]
+        payload["page"] = {
+            "rows": page_rows,
+            "total": len(rows),
+            "offset": offset,
+            "shown": len(page_rows),
+            "page": page,
+            "page_size": PAGE_SIZE,
+            "columns": COLUMNS,
+        }
+        return payload
 
     @app.get("/table.csv")
     def table_csv():

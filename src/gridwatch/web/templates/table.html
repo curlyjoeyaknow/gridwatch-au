@@ -2,8 +2,7 @@
 {% block title %}Data table — GridWatch AU{% endblock %}
 {% block content %}
 <h1>Data table</h1>
-
-<p class="muted">Charts below update live as you change the filters; the table updates when you press Apply.</p>
+<p class="muted">Charts <em>and</em> the table update live as you change the filters — no page reload.</p>
 
 <form class="filters" id="filters" method="get" action="{{ url_for('table') }}">
   <div><label>Region</label><input name="region" value="{{ args.get('region','') }}" placeholder="e.g. SA1" size="6"></div>
@@ -25,85 +24,117 @@
   </div>
   <div><label><input type="checkbox" name="descending" {{ 'checked' if args.get('descending') }}> desc</label></div>
   <div><label><input type="checkbox" name="renewable_only" {{ 'checked' if args.get('renewable_only') }}> renewable only</label></div>
-  <div><button type="submit">Apply</button></div>
 </form>
+
+<div class="filters" style="margin:.3rem 0 .6rem">
+  <div><label>Line bucket</label>
+    <select id="chartBucket">
+      <option value="hour" {{ 'selected' if args.get('bucket')!='day' }}>hourly</option>
+      <option value="day" {{ 'selected' if args.get('bucket')=='day' }}>daily</option>
+    </select>
+  </div>
+  <div><label>Bar shows</label>
+    <select id="barMetric"><option value="avg">average</option><option value="sum">sum</option></select>
+  </div>
+</div>
 
 <div class="grid">
   <div class="card"><canvas id="lineChart" height="150"></canvas></div>
   <div class="card"><canvas id="barChart" height="150"></canvas></div>
 </div>
-<p class="muted" id="chartstatus">loading charts…</p>
+<p class="muted" id="chartstatus">loading…</p>
 
-{% if error %}
-  <div class="card"><strong>Error:</strong> {{ error }}</div>
-{% elif result %}
-  <p class="muted">
-    {% if result.total %}showing {{ result.offset + 1 }}–{{ result.offset + result.shown }} of {{ result.total }}{% else %}no rows match{% endif %}
-    &nbsp;·&nbsp; <a href="{{ url_for('table_csv', **args) }}">Export CSV</a>
-  </p>
-  <table>
-    <thead><tr>{% for col in columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
-    <tbody>
-      {% for row in result.rows %}
-      <tr>{% for col in columns %}<td class="{{ 'num' if col=='value' }}">{{ row.get(col) if row.get(col) is not none else '' }}</td>{% endfor %}</tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% if error %}<div class="card"><strong>Error:</strong> {{ error }}</div>{% endif %}
 
-  <p style="margin-top:.8rem">
-    {% set qp = args.to_dict() %}
-    {% if page > 1 %}{% set _ = qp.update({'page': page-1}) %}<a href="{{ url_for('table', **qp) }}">&larr; Prev</a>{% endif %}
-    &nbsp; page {{ page }} &nbsp;
-    {% if result.offset + result.shown < result.total %}{% set _ = qp.update({'page': page+1}) %}<a href="{{ url_for('table', **qp) }}">Next &rarr;</a>{% endif %}
-  </p>
-{% endif %}
+<p class="muted"><span id="status"></span> &nbsp;·&nbsp; <a id="csvlink" href="{{ url_for('table_csv', **args) }}">Export CSV</a></p>
+<table>
+  <thead><tr>{% for col in columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+  <tbody id="tbody"></tbody>
+</table>
+<p style="margin-top:.8rem" id="paging"></p>
+<noscript><p class="muted">This view needs JavaScript for the live table and charts.</p></noscript>
 
 <script src="{{ url_for('static', filename='chart.min.js') }}"></script>
 <script>
+const COLS = {{ columns|tojson }};
 const PALETTE = ['#2e8b57','#a0522d','#1f77b4','#d62728','#9467bd','#ff7f0e','#17becf','#8c564b'];
-let lineChart, barChart;
+let lineChart, barChart, lastData, currentPage = {{ (args.get('page') or 1)|int }};
 
-async function updateCharts() {
-  const form = document.getElementById('filters');
-  const params = new URLSearchParams(new FormData(form));
-  const status = document.getElementById('chartstatus');
-  let data;
-  try {
-    const resp = await fetch('{{ url_for("table_json") }}?' + params.toString());
-    data = await resp.json();
-    if (!resp.ok) { status.textContent = 'Error: ' + (data.error || resp.status); return; }
-  } catch (e) { status.textContent = 'Could not load charts.'; return; }
+function filterParams() {
+  return new URLSearchParams(new FormData(document.getElementById('filters')));
+}
 
-  status.textContent = data.count + ' reading(s) match · unit: ' + (data.unit || '—');
-  const datasets = data.series.map((s, i) => ({
+function renderLine(d) {
+  const datasets = d.series.map((s, i) => ({
     label: s.label, data: s.data, borderColor: PALETTE[i % PALETTE.length],
     backgroundColor: PALETTE[i % PALETTE.length], spanGaps: true, tension: 0.25, pointRadius: 0,
   }));
   if (lineChart) lineChart.destroy();
   lineChart = new Chart(document.getElementById('lineChart'), {
-    type: 'line',
-    data: { labels: data.labels, datasets },
+    type: 'line', data: { labels: d.labels, datasets },
     options: { responsive: true, animation: false,
-      plugins: { title: { display: true, text: 'Filtered values over time (hourly mean)' },
+      plugins: { title: { display: true, text: 'Filtered values over time' },
                  legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
       scales: { x: { ticks: { maxTicksLimit: 10, font: { size: 9 } } } } },
   });
+}
+
+function renderBar(d) {
+  const which = document.getElementById('barMetric').value;  // avg | sum
   if (barChart) barChart.destroy();
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
-    data: { labels: data.breakdown.labels,
-            datasets: [{ label: 'avg ' + (data.unit || ''), data: data.breakdown.avg, backgroundColor: '#2e8b57' }] },
+    data: { labels: d.breakdown.labels,
+            datasets: [{ label: which + ' ' + (d.unit || ''), data: d.breakdown[which], backgroundColor: '#2e8b57' }] },
     options: { responsive: true, animation: false,
-      plugins: { title: { display: true, text: 'Average by fuel / metric' }, legend: { display: false } } },
+      plugins: { title: { display: true, text: 'By fuel / metric (' + which + ')' }, legend: { display: false } } },
   });
 }
 
+function renderTable(pg) {
+  document.getElementById('tbody').innerHTML = pg.rows.map(r =>
+    '<tr>' + COLS.map(c => `<td class="${c === 'value' ? 'num' : ''}">${r[c] ?? ''}</td>`).join('') + '</tr>'
+  ).join('');
+  document.getElementById('status').textContent = pg.total
+    ? `showing ${pg.offset + 1}–${pg.offset + pg.shown} of ${pg.total}` : 'no rows match';
+  const paging = document.getElementById('paging');
+  paging.innerHTML = '';
+  const link = (text, page) => {
+    const a = document.createElement('a'); a.href = '#'; a.textContent = text;
+    a.onclick = (e) => { e.preventDefault(); currentPage = page; updateAll(false); };
+    return a;
+  };
+  if (pg.offset > 0) paging.append(link('← Prev', pg.page - 1));
+  paging.append(document.createTextNode(`  page ${pg.page}  `));
+  if (pg.offset + pg.shown < pg.total) paging.append(link('Next →', pg.page + 1));
+}
+
+async function updateAll(resetPage) {
+  if (resetPage) currentPage = 1;
+  const status = document.getElementById('chartstatus');
+  const params = filterParams();
+  params.set('bucket', document.getElementById('chartBucket').value);
+  params.set('page', currentPage);
+  let d;
+  try {
+    const resp = await fetch('{{ url_for("table_json") }}?' + params.toString());
+    d = await resp.json();
+    if (!resp.ok) { status.textContent = 'Error: ' + (d.error || resp.status); return; }
+  } catch (e) { status.textContent = 'Could not load data.'; return; }
+  lastData = d;
+  status.textContent = d.count + ' reading(s) match · unit: ' + (d.unit || '—');
+  document.getElementById('csvlink').href = '{{ url_for("table_csv") }}?' + filterParams().toString();
+  renderLine(d); renderBar(d); renderTable(d.page);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  updateCharts();
+  updateAll(false);
   let timer;
   document.getElementById('filters').addEventListener('input', () => {
-    clearTimeout(timer); timer = setTimeout(updateCharts, 300);
+    clearTimeout(timer); timer = setTimeout(() => updateAll(true), 300);
   });
+  document.getElementById('chartBucket').addEventListener('change', () => updateAll(false));
+  document.getElementById('barMetric').addEventListener('change', () => { if (lastData) renderBar(lastData); });
 });
 </script>
 {% endblock %}

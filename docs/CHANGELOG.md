@@ -5,7 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Live filter-driven charts on the data table (PR #11), on branch `track-12-live-charts`.
+Reload-free data table + chart aggregation toggle (PR #12), on branch `track-13-live-table`.
+
+### Added
+- **Reload-free table** — `/table.json` now also returns a paginated `page` section
+  (rows/total/offset/shown/page/columns); the data-table tbody, status line, paging, and
+  CSV link are all driven by that JSON, so filtering and paging never reload the page.
+- **Chart toggles** — a **Line bucket** control (hourly/daily; `bucket=` on `/table.json`,
+  via a shared `_bucketer`) and a **Bar shows** control (average/sum, switched client-side).
+
+### Changed
+- `_series_payload` takes a `bucket` argument; `/table.json` accepts `bucket` and `page`.
+- Tests for the paginated payload and the daily bucket (full suite 184).
+
+Live filter-driven charts on the data table (PR #11).
 
 ### Added
 - **`/table.json`** — a JSON endpoint that turns the current filtered query into a

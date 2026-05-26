@@ -100,3 +100,7 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 ### Track 12 — Live filter-driven charts  ✅
 | 12.1 | `/table.json` filtered series endpoint (magnitude-ranked, hourly buckets) | ✅ |
 | 12.2 | Vendored Chart.js; live line+bar charts on `/table` that redraw on filter change | ✅ |
+
+### Track 13 — Reload-free table + toggles  ✅
+| 13.1 | `/table.json` paginated `page` section; tbody/status/paging/CSV all JS-driven | ✅ |
+| 13.2 | Line bucket (hourly/daily) + Bar (avg/sum) toggles | ✅ |
