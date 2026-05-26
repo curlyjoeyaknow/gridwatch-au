@@ -75,11 +75,11 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 ### Track 6 — SQLite repository adapter  ✅ (ADR-006)
 | 6.1 | `adapters/sqlite_repo.py` — `SqliteRepository`, wired into CLI save/load | ✅ |
 
-### Track 7 — Append-only ingest ledger + bulk fetch  ⬜ (ADR-007)
-| 7.1 | `contracts/ingest.py` `IngestEvent`; `ports/ledger.py` `EventLedger` | ⬜ |
-| 7.2 | `adapters/jsonl_ledger.py`, `adapters/parquet_ledger.py` (append-only) | ⬜ |
-| 7.3 | Replay projection (dedup latest-ingest → Regions) | ⬜ |
-| 7.4 | `manager.bulk_fetch()` + `load_from_ledger()` | ⬜ |
+### Track 7 — Append-only ingest ledger + bulk fetch  ✅ (ADR-007)
+| 7.1 | `contracts/ingest.py` `IngestEvent`; `ports/ledger.py` `EventLedger` | ✅ |
+| 7.2 | `adapters/jsonl_ledger.py`, `adapters/parquet_ledger.py` (append-only) | ✅ |
+| 7.3 | Replay projection (dedup latest-ingest → Regions) | ✅ |
+| 7.4 | `manager.bulk_fetch()` + `load_from_ledger()` + CLI 11/12 | ✅ |
 
 ### Track 8 — Query / data-table browse with filters  ⬜
 | 8.1 | `application/query.py` — filter/sort/paginate over all local data | ⬜ |
