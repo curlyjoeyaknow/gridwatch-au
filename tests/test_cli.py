@@ -88,6 +88,33 @@ def test_bulk_fetch_unknown_ledger_format_reports_error(tmp_path):
     assert any("error" in line.lower() for line in out)
 
 
+def test_browse_renders_a_table(tmp_path):
+    cli, out = _cli(tmp_path)
+    cli.fetch("SA1")
+    out.clear()
+    result = cli.browse(page=1, page_size=5)
+    assert result is not None and result.total >= 1
+    joined = "\n".join(out).lower()
+    assert "showing" in joined and "of" in joined
+
+
+def test_browse_with_filter_narrows(tmp_path):
+    cli, out = _cli(tmp_path)
+    cli.fetch("SA1")
+    result = cli.browse(metric="power", renewable_only=True)
+    assert result.total == 1  # only the wind reading
+
+
+def test_export_query_writes_csv(tmp_path):
+    cli, _ = _cli(tmp_path)
+    cli.fetch("SA1")
+    path = tmp_path / "q.csv"
+    assert cli.export_query(path, metric="power") is True
+    text = path.read_text()
+    assert "timestamp,region,metric,fuel_tech,value,unit" in text
+    assert text.count("\n") == 3  # header + 2 power rows
+
+
 def test_run_loop_drives_fetch_then_exit(tmp_path):
     # menu: 1 = fetch -> "SA1" -> 0 = exit
     scripted = iter(["1", "SA1", "0"])

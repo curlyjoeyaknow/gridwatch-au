@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
+from gridwatch.application.query import QueryResult, query_readings
 from gridwatch.contracts.ingest import IngestEvent
 from gridwatch.contracts.readings import Reading
 from gridwatch.contracts.regions import NEM_REGIONS, validate_region
@@ -115,6 +116,14 @@ class EnergyGridManager:
         for reg in regions:
             results.extend(reg.filter(**criteria))
         return results
+
+    # --- query / browse ---------------------------------------------------
+    def all_readings(self) -> list[Reading]:
+        return [r for region in self._regions.values() for r in region.readings]
+
+    def query(self, **criteria) -> QueryResult:
+        """Filter/sort/paginate across all loaded readings (see query_readings)."""
+        return query_readings(self.all_readings(), **criteria)
 
     # --- insight ----------------------------------------------------------
     def summarise(self, code: str) -> RegionSummary:

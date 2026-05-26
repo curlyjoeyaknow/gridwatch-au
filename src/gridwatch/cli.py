@@ -7,6 +7,7 @@ input, a network failure, or a corrupt file.
 
 from __future__ import annotations
 
+import csv
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from gridwatch.adapters.openelectricity import OpenElectricityClient
 from gridwatch.adapters.parquet_ledger import ParquetEventLedger
 from gridwatch.adapters.sqlite_repo import SqliteRepository
 from gridwatch.application.manager import EnergyGridManager
+from gridwatch.application.query import COLUMNS, QueryResult
 from gridwatch.contracts.fueltech import classify
 from gridwatch.contracts.readings import (
     DemandReading,
@@ -42,6 +44,7 @@ MENU = """
 10) Delete readings
 11) Bulk fetch all regions -> append-only ledger
 12) Load state from a ledger (replay)
+13) Browse / query the data table (filters, paging, CSV export)
  0) Exit
 """
 
@@ -199,6 +202,52 @@ class GridWatchCLI:
         self.out(f"Replayed ledger {path} → {len(self.manager.regions())} region(s).")
         return True
 
+    def _render_table(self, result: QueryResult) -> None:
+        if not result.rows:
+            self.out("No rows match.")
+            return
+        widths = {col: len(col) for col in COLUMNS}
+        cells = []
+        for row in result.rows:
+            cell = {col: ("" if row.get(col) is None else str(row.get(col))) for col in COLUMNS}
+            for col in COLUMNS:
+                widths[col] = max(widths[col], len(cell[col]))
+            cells.append(cell)
+        self.out("  ".join(col.ljust(widths[col]) for col in COLUMNS))
+        self.out("  ".join("-" * widths[col] for col in COLUMNS))
+        for cell in cells:
+            self.out("  ".join(cell[col].ljust(widths[col]) for col in COLUMNS))
+        first = result.offset + 1 if result.shown else 0
+        self.out(f"showing {first}-{result.offset + result.shown} of {result.total}")
+
+    def browse(self, *, page: int = 1, page_size: int = 20, **filters) -> QueryResult | None:
+        try:
+            offset = (max(page, 1) - 1) * page_size
+            result = self.manager.query(limit=page_size, offset=offset, **filters)
+        except GridWatchError as exc:
+            self.out(f"Error: {exc}")
+            return None
+        self._render_table(result)
+        return result
+
+    def export_query(self, path: str | Path, **filters) -> bool:
+        try:
+            result = self.manager.query(limit=None, **filters)
+        except GridWatchError as exc:
+            self.out(f"Error: {exc}")
+            return False
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=COLUMNS, extrasaction="ignore")
+                writer.writeheader()
+                for row in result.rows:
+                    writer.writerow({col: row.get(col) for col in COLUMNS})
+        except OSError as exc:
+            self.out(f"Error: {exc}")
+            return False
+        self.out(f"Exported {len(result.rows)} rows to {path}")
+        return True
+
     def add_reading(self, region, metric, value, interval, fuel_tech=None, timestamp=None) -> bool:
         try:
             code = validate_region(region)
@@ -285,8 +334,31 @@ class GridWatchCLI:
                 self.bulk_fetch(self._ask("Ledger format (jsonl/parquet): "), self._ask("Path: "))
             elif choice == "12":
                 self.load_ledger(self._ask("Ledger format (jsonl/parquet): "), self._ask("Path: "))
+            elif choice == "13":
+                self._browse_interactive()
             else:
                 self.out("Unknown choice.")
+
+    def _browse_interactive(self) -> None:
+        filters = {
+            "region": self._ask("Region (blank = all): ") or None,
+            "metric": self._ask("Metric (blank = any): ") or None,
+            "fuel_tech": self._ask("Fuel tech (blank = any): ") or None,
+            "renewable_only": self._ask("Renewable only? (y/N): ").lower().startswith("y"),
+            "sort_by": self._ask("Sort by (timestamp/value/region/metric): ") or "timestamp",
+        }
+        page = 1
+        while True:
+            self.browse(page=page, **filters)
+            nav = self._ask("[n]ext / [p]rev / [e]xport CSV / [q]uit: ").lower()
+            if nav == "n":
+                page += 1
+            elif nav == "p":
+                page = max(1, page - 1)
+            elif nav == "e":
+                self.export_query(self._ask("CSV path: "), **filters)
+            else:
+                return
 
 
 def main() -> None:
