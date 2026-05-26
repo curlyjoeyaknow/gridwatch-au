@@ -11,10 +11,10 @@ intervals change as data firms up). If each download overwrote the previous one,
 lose history and could never audit what was observed when. The user also wants the data to
 live **locally** after a bulk fetch, and to query *everything ever downloaded*.
 
-This is exactly the shape an event log solves — and it mirrors the Phalanx principle the
-project owner favours: an **append-only lake is the source of truth; state is derived**.
-The repositories (ADR-004/006) persist a *snapshot* of current state; they are not a
-history. We need a separate, immutable record of ingestion.
+This is exactly the shape an event log solves, following the event-sourcing principle:
+an **append-only log is the source of truth; state is derived**. The repositories
+(ADR-004/006) persist a *snapshot* of current state; they are not a history. We need a
+separate, immutable record of ingestion.
 
 ## Decision
 

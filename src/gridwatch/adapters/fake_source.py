@@ -1,6 +1,6 @@
 """FakeDataSource — the only fake in the system, living at the DataSource port.
 
-Lets the core be tested end-to-end with no network (CLAUDE.md non-negotiables).
+Lets the core be tested end-to-end with no network.
 """
 
 from __future__ import annotations
