@@ -1,0 +1,23 @@
+# Install once:  pip install pre-commit && pre-commit install
+# Runs on every `git commit`. Mirrors the CI gates so red never reaches the remote.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff            # lint
+        args: [--fix]
+      - id: ruff-format     # format
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (fast suite)
+        entry: python -m pytest -q -m "not slow"
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: decision-hygiene
+        name: decision hygiene (changelog/ADR)
+        entry: python3 tools/check_decision_hygiene.py
+        language: system
+        pass_filenames: false
+        always_run: true
