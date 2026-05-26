@@ -13,6 +13,7 @@ from pathlib import Path
 from gridwatch.adapters.csv_repo import CsvRepository
 from gridwatch.adapters.json_repo import JsonRepository
 from gridwatch.adapters.openelectricity import OpenElectricityClient
+from gridwatch.adapters.sqlite_repo import SqliteRepository
 from gridwatch.application.manager import EnergyGridManager
 from gridwatch.contracts.fueltech import classify
 from gridwatch.contracts.readings import (
@@ -40,7 +41,7 @@ MENU = """
  0) Exit
 """
 
-_REPOS = {"json": JsonRepository, "csv": CsvRepository}
+_REPOS = {"json": JsonRepository, "csv": CsvRepository, "sqlite": SqliteRepository}
 
 
 class GridWatchCLI:
@@ -143,7 +144,7 @@ class GridWatchCLI:
     def save(self, fmt: str, path: str | Path) -> bool:
         repo_cls = _REPOS.get(fmt.lower())
         if repo_cls is None:
-            self.out(f"Error: unknown format {fmt!r} (use json or csv)")
+            self.out(f"Error: unknown format {fmt!r} (use json, csv, or sqlite)")
             return False
         try:
             self.manager.save(repo_cls(), path)
@@ -156,7 +157,7 @@ class GridWatchCLI:
     def load(self, fmt: str, path: str | Path) -> bool:
         repo_cls = _REPOS.get(fmt.lower())
         if repo_cls is None:
-            self.out(f"Error: unknown format {fmt!r} (use json or csv)")
+            self.out(f"Error: unknown format {fmt!r} (use json, csv, or sqlite)")
             return False
         try:
             self.manager.load(repo_cls(), path)
@@ -235,9 +236,9 @@ class GridWatchCLI:
                     self._ask("Region (blank for share/emissions): ") or None,
                 )
             elif choice == "7":
-                self.save(self._ask("Format (json/csv): "), self._ask("Path: "))
+                self.save(self._ask("Format (json/csv/sqlite): "), self._ask("Path: "))
             elif choice == "8":
-                self.load(self._ask("Format (json/csv): "), self._ask("Path: "))
+                self.load(self._ask("Format (json/csv/sqlite): "), self._ask("Path: "))
             elif choice == "9":
                 self.add_reading(
                     self._ask("Region: "),

@@ -5,7 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Tracks 4 + 5 — visualisations + CLI (PR #4), on branch `track-4-5-viz-cli`.
+SQLite repository adapter (PR #5), on branch `track-6-sqlite`.
+
+### Added
+- **`SqliteRepository` (ADR-006)** — `adapters/sqlite_repo.py`: a third interchangeable
+  `Repository` over a single-file SQLite database (`regions` + indexed `readings`
+  tables). `save` is a transactional snapshot replace; rehydration reuses
+  `serde.reading_from_row`; `sqlite3`/OS errors wrapped in `PersistenceError`. Wired into
+  the CLI save/load formats (`json`/`csv`/`sqlite`). Verified live (TAS1 22k readings
+  round-trip).
+- **Tests** — real on-disk round-trip incl. subtype preservation, snapshot-replace,
+  corrupt-DB and missing-DB error paths (full suite 107).
+
+Tracks 4 + 5 — visualisations + CLI (PR #4).
 
 ### Added
 - **Visualisations (Track 4)** — `viz/charts.py` (headless Agg backend): fuel-mix pie,
