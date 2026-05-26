@@ -5,7 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Tracks 2 + 3 — application facade + adapters (PR #3), on branch `track-2-3-app-adapters`.
+Tracks 4 + 5 — visualisations + CLI (PR #4), on branch `track-4-5-viz-cli`.
+
+### Added
+- **Visualisations (Track 4)** — `viz/charts.py` (headless Agg backend): fuel-mix pie,
+  renewable-share bar, emissions-intensity bar, price-trend line; each raises
+  `ValidationError` on empty input and writes a PNG.
+- **CLI (Track 5)** — `cli.py`: menu-driven `GridWatchCLI` driving adapter wiring the
+  real `OpenElectricityClient`, repositories, and charts; every action catches
+  `GridWatchError` and reports it (never crashes). `gridwatch` console entry point.
+- **Tests** — chart files written + empty-input guards; CLI action outputs, error
+  paths, and a scripted `run()` loop (full suite 103, offline).
+- **Live end-to-end** — fetched all five NEM regions and rendered charts: TAS1 99.8%
+  renewable, SA1 68.7%, VIC1 28.5% (highest intensity, brown coal).
+
+Tracks 2 + 3 — application facade + adapters (PR #3).
 
 ### Added
 - **OpenElectricity adapter (ADR-002)** — `adapters/openelectricity.py`:
