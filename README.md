@@ -20,8 +20,15 @@ renewable share, and emissions.
 - **Summarise:** total generation, **renewable share %**, total emissions,
   **emissions intensity (tCO₂e/MWh)**, average/peak price — per region and compared.
 - **Live API:** fetch the 7-day feed for any NEM region (free, no API key).
-- **Persist:** save/load datasets as **JSON** (canonical) or **CSV** (export).
-- **Visualise:** fuel-mix, renewable-share, emissions, and price charts (matplotlib).
+- **Bulk fetch + ledger:** download all regions into an append-only **JSONL/Parquet
+  event ledger** (immutable history); current state is **derived by replay** (dedup,
+  latest-ingest-wins).
+- **Browse:** a queryable **data table** (filter by region/metric/fuel/category/
+  renewable/value/time, sort, page) with CSV export of the filtered set.
+- **Persist:** JSON, CSV, or **SQLite** snapshots.
+- **Visualise (9 chart types):** fuel-mix pie, renewable-share & emissions-intensity
+  bars, price trend, **stacked generation-over-time**, renewable-share-over-time,
+  demand-vs-generation, emissions-over-time, and a price duration curve (matplotlib).
 
 ## How it's built
 Spec-driven delivery, ports & adapters, real TDD — see [`CLAUDE.md`](CLAUDE.md) for the
