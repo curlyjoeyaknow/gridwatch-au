@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Web dashboard (PR #9), on branch `track-10-web-dashboard`.
+
+### Added
+- **Flask web dashboard (ADR-008)** — `src/gridwatch/web/`: `create_app()` factory + a
+  driving adapter reusing the manager, query engine, and charts (no new domain logic).
+  Routes: `/` (region comparison + cross-region charts), `/region/<code>` (summary + all
+  chart types), `/table` (queryable data table: filter/sort/paginate), `/table.csv`
+  (export the filtered set), `/charts/<kind>[/<region>].png` (on-demand PNGs), and
+  `POST /refresh` (bulk-fetch live → ledger → replay). Reads from the ledger
+  (`GRIDWATCH_LEDGER`).
+- **Deploy-ready** — `Dockerfile` + `.dockerignore` run the factory under `gunicorn`;
+  `python -m gridwatch.web` for local. Added `flask` dependency.
+- **Tests** — Flask test client: dashboard, region page (+404), data table & filters,
+  CSV export, chart PNG routes (+404 for empty), and refresh bulk-fetch flow (suite 158).
+
 Repository cleanup.
 
 ### Removed

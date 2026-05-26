@@ -87,3 +87,7 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 
 ### Track 9 — More chart types  ✅
 | 9.1 | stacked-area generation · price duration curve · share/emissions over time · demand-vs-gen | ✅ |
+
+### Track 10 — Web dashboard  ✅ (ADR-008)
+| 10.1 | `web/` Flask driving adapter: dashboard · region page · data table · CSV · charts · refresh | ✅ |
+| 10.2 | Dockerfile + gunicorn (deploy-ready); `python -m gridwatch.web` (local) | ✅ |
