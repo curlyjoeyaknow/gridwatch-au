@@ -7,6 +7,8 @@ can report it cleanly rather than emit a blank image.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
@@ -15,9 +17,45 @@ matplotlib.use("Agg")  # headless; must precede pyplot import
 
 import matplotlib.pyplot as plt  # noqa: E402
 
+from gridwatch.contracts.fueltech import RENEWABLE_CATEGORIES, FuelCategory  # noqa: E402
+from gridwatch.contracts.readings import (  # noqa: E402
+    DemandReading,
+    EmissionReading,
+    PowerReading,
+)
 from gridwatch.contracts.summary import RegionSummary  # noqa: E402
 from gridwatch.domain.region import Region  # noqa: E402
 from gridwatch.exceptions import ValidationError  # noqa: E402
+
+
+def _floor(ts: datetime, minutes: int) -> datetime:
+    return ts.replace(minute=(ts.minute // minutes) * minutes, second=0, microsecond=0)
+
+
+def _bucketed_generation(region: Region, minutes: int = 30):
+    """Return (axis, categories, ys): generation MW averaged into time buckets per fuel."""
+    power = [
+        r for r in region.readings if isinstance(r, PowerReading) and r.fuel.counts_as_generation
+    ]
+    if not power:
+        return [], [], []
+    buckets: dict[FuelCategory, dict[datetime, list[float]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    axis_set: set[datetime] = set()
+    for r in power:
+        bucket = _floor(r.timestamp, minutes)
+        buckets[r.fuel.category][bucket].append(r.value)
+        axis_set.add(bucket)
+    axis = sorted(axis_set)
+    categories = sorted(buckets, key=lambda c: c.name)
+    ys = []
+    for category in categories:
+        per_bucket = buckets[category]
+        ys.append(
+            [sum(per_bucket[b]) / len(per_bucket[b]) if b in per_bucket else 0.0 for b in axis]
+        )
+    return axis, categories, ys
 
 
 def _save(fig, path: str | Path) -> Path:
@@ -85,4 +123,93 @@ def price_trend_chart(region: Region, path: str | Path) -> Path:
     ax.set_ylabel("Price (AUD/MWh)")
     ax.set_title(f"{region.code} — spot price (last 7d)")
     fig.autofmt_xdate()
+    return _save(fig, path)
+
+
+def generation_stack_chart(region: Region, path: str | Path) -> Path:
+    """Stacked area of generation by fuel category over time (the classic NEM chart)."""
+    axis, categories, ys = _bucketed_generation(region)
+    if not axis:
+        raise ValidationError(f"no generation to plot for {region.code}")
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.stackplot(axis, *ys, labels=[c.name.title() for c in categories])
+    ax.legend(loc="upper left", fontsize=8, ncol=2)
+    ax.set_ylabel("Generation (MW)")
+    ax.set_title(f"{region.code} — generation by fuel over time (last 7d)")
+    fig.autofmt_xdate()
+    return _save(fig, path)
+
+
+def renewable_share_over_time(region: Region, path: str | Path) -> Path:
+    """Line of the renewable share (%) of generation over time."""
+    axis, categories, ys = _bucketed_generation(region)
+    if not axis:
+        raise ValidationError(f"no generation to plot for {region.code}")
+    share = []
+    for j in range(len(axis)):
+        total = sum(ys[i][j] for i in range(len(categories)))
+        renewable = sum(ys[i][j] for i, c in enumerate(categories) if c in RENEWABLE_CATEGORIES)
+        share.append((renewable / total * 100) if total > 0 else 0.0)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(axis, share, color="#2e8b57", linewidth=1.1)
+    ax.set_ylim(0, 100)
+    ax.set_ylabel("Renewable share (%)")
+    ax.set_title(f"{region.code} — renewable share over time (last 7d)")
+    fig.autofmt_xdate()
+    return _save(fig, path)
+
+
+def demand_vs_generation_chart(region: Region, path: str | Path) -> Path:
+    """Lines of total generation and demand over time."""
+    axis, categories, ys = _bucketed_generation(region)
+    demand_raw = [r for r in region.readings if isinstance(r, DemandReading)]
+    if not axis and not demand_raw:
+        raise ValidationError(f"nothing to plot for {region.code}")
+    fig, ax = plt.subplots(figsize=(9, 4))
+    if axis:
+        total_gen = [sum(ys[i][j] for i in range(len(categories))) for j in range(len(axis))]
+        ax.plot(axis, total_gen, label="Total generation", color="#1f77b4", linewidth=1.0)
+    if demand_raw:
+        demand_buckets: dict[datetime, list[float]] = defaultdict(list)
+        for r in demand_raw:
+            demand_buckets[_floor(r.timestamp, 30)].append(r.value)
+        dx = sorted(demand_buckets)
+        dy = [sum(demand_buckets[b]) / len(demand_buckets[b]) for b in dx]
+        ax.plot(dx, dy, label="Demand", color="#d62728", linewidth=1.0)
+    ax.legend(loc="upper left", fontsize=8)
+    ax.set_ylabel("MW")
+    ax.set_title(f"{region.code} — demand vs generation (last 7d)")
+    fig.autofmt_xdate()
+    return _save(fig, path)
+
+
+def emissions_over_time(region: Region, path: str | Path) -> Path:
+    """Line of total emissions (tCO2e) per time bucket."""
+    emissions = [r for r in region.readings if isinstance(r, EmissionReading)]
+    if not emissions:
+        raise ValidationError(f"no emissions to plot for {region.code}")
+    buckets: dict[datetime, float] = defaultdict(float)
+    for r in emissions:
+        buckets[_floor(r.timestamp, 30)] += r.value
+    axis = sorted(buckets)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(axis, [buckets[b] for b in axis], color="#a0522d", linewidth=1.0)
+    ax.set_ylabel("Emissions (tCO₂e / 30 min)")
+    ax.set_title(f"{region.code} — emissions over time (last 7d)")
+    fig.autofmt_xdate()
+    return _save(fig, path)
+
+
+def price_duration_curve(region: Region, path: str | Path) -> Path:
+    """Price duration curve: spot prices sorted high→low vs % of intervals."""
+    prices = sorted((r.value for r in region.filter(metric="price")), reverse=True)
+    if not prices:
+        raise ValidationError(f"no price readings to plot for {region.code}")
+    xs = [i / len(prices) * 100 for i in range(len(prices))]
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(xs, prices, color="#1f77b4", linewidth=1.1)
+    ax.axhline(0, color="grey", linewidth=0.5)
+    ax.set_xlabel("% of intervals at or above price")
+    ax.set_ylabel("Price (AUD/MWh)")
+    ax.set_title(f"{region.code} — price duration curve (last 7d)")
     return _save(fig, path)

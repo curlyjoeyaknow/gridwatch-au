@@ -5,7 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Query / data-table browse with filters (PR #7), on branch `track-8-query-table`.
+More chart types (PR #8), on branch `track-9-more-charts`.
+
+### Added
+- **Five new charts** in `viz/charts.py`: `generation_stack_chart` (stacked area by fuel
+  over time — the classic NEM chart), `renewable_share_over_time`,
+  `demand_vs_generation_chart`, `emissions_over_time`, and `price_duration_curve`. A
+  shared 30-minute time-bucketing helper aligns the mixed-interval series.
+- **CLI** — `visualise` now also accepts `stack`, `sharetime`, `demandgen`,
+  `emissionstime`, `duration` (region-scoped), via a `_REGION_CHARTS` dispatch table.
+- **Tests** — each new chart writes a PNG and raises on an empty region (full suite 148).
+
+Query / data-table browse with filters (PR #7).
 
 ### Added
 - **Query engine** — `application/query.py`: pure `query_readings()` over readings with
