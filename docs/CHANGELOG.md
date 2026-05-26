@@ -5,7 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Tracks 0 + 1 — contracts spine + domain (PR #2), on branch `track-0-1-contracts-domain`.
+Tracks 2 + 3 — application facade + adapters (PR #3), on branch `track-2-3-app-adapters`.
+
+### Added
+- **OpenElectricity adapter (ADR-002)** — `adapters/openelectricity.py`:
+  `OpenElectricityClient` (real `DataSource`; `User-Agent`, timeout, errors wrapped in
+  `DataSourceError`) and a **pure** `map_payload()` that reconstructs timestamps from
+  `start + interval × index` and maps each vendor series to a typed `Reading` — vendor
+  shape stops at the adapter. Verified live: SA1 ≈ 46k readings, 68.8% renewable.
+- **FakeDataSource** — `adapters/fake_source.py`: the only fake, at the port.
+- **Persistence (ADR-004)** — `adapters/json_repo.py` (canonical, loss-less),
+  `adapters/csv_repo.py` (flat export), shared `adapters/serde.py` rehydration;
+  I/O/parse failures raise `PersistenceError`.
+- **EnergyGridManager** — `application/manager.py`: region/reading CRUD, live
+  `import_region()`, composable `search()`, `summarise()`/`compare()`, `save()`/`load()`
+  via the ports.
+- **Tests** — adapter mapping against the captured fixture, HTTP behaviour via a fake
+  session, real-file round-trips, and manager flows with `FakeDataSource` (full suite 91).
+
+Tracks 0 + 1 — contracts spine + domain (PR #2).
 
 ### Added
 - **Exception hierarchy** — `exceptions.py`: `GridWatchError` base with
