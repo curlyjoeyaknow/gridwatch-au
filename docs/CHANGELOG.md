@@ -5,7 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Web dashboard (PR #9), on branch `track-10-web-dashboard`.
+Time-bucketed aggregation + trends (PR #10), on branch `track-11-trends`.
+
+### Added
+- **Aggregation engine** — `domain/aggregate.py`: `PeriodPoint` + `aggregate(readings,
+  period, region)` bucketing by `hour`/`day`/`week`/`month` (per region), folding each
+  bucket via the existing analytics; `analytics.demand_stats` (avg/peak demand).
+- **Trend chart** — `viz.period_trend_chart`: a chosen metric (renewable share,
+  generation, emissions, intensity, price, demand) plotted across periods, one line per
+  region.
+- **`EnergyGridManager.trends()`** over all loaded data.
+- **Web Trends page** — `/trends` (period/region/metric controls, trend chart, per-period
+  summary table), `/trends.csv` (export), `/charts/trend.png`; nav link added.
+- **CLI** — `trends` command (menu option 14): per-period summary table.
+- **Tests** — aggregation buckets/metrics/edge-cases, trend chart, manager + CLI trends,
+  and the web trends routes (full suite 176).
+
+Web dashboard (PR #9).
 
 ### Added
 - **Flask web dashboard (ADR-008)** — `src/gridwatch/web/`: `create_app()` factory + a

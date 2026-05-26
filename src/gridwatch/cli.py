@@ -45,6 +45,7 @@ MENU = """
 11) Bulk fetch all regions -> append-only ledger
 12) Load state from a ledger (replay)
 13) Browse / query the data table (filters, paging, CSV export)
+14) Trends — summarise by hour/day/week/month
  0) Exit
 """
 
@@ -258,6 +259,31 @@ class GridWatchCLI:
         self.out(f"Exported {len(result.rows)} rows to {path}")
         return True
 
+    def trends(self, period, region=None) -> bool:
+        try:
+            points = self.manager.trends(period, region=region)
+        except GridWatchError as exc:
+            self.out(f"Error: {exc}")
+            return False
+        if not points:
+            self.out("No data. Fetch or load a dataset first.")
+            return True
+        cols = [
+            "period",
+            "region",
+            "generation_mwh",
+            "renewable_share_pct",
+            "emissions_intensity",
+            "avg_price",
+        ]
+        rows = [p.as_dict() for p in points]
+        widths = {c: max(len(c), max(len(str(r.get(c, ""))) for r in rows)) for c in cols}
+        self.out("  ".join(c.ljust(widths[c]) for c in cols))
+        self.out("  ".join("-" * widths[c] for c in cols))
+        for r in rows:
+            self.out("  ".join(str(r.get(c, "")).ljust(widths[c]) for c in cols))
+        return True
+
     def add_reading(self, region, metric, value, interval, fuel_tech=None, timestamp=None) -> bool:
         try:
             code = validate_region(region)
@@ -349,6 +375,11 @@ class GridWatchCLI:
                 self.load_ledger(self._ask("Ledger format (jsonl/parquet): "), self._ask("Path: "))
             elif choice == "13":
                 self._browse_interactive()
+            elif choice == "14":
+                self.trends(
+                    self._ask("Period (hour/day/week/month): ") or "day",
+                    self._ask("Region (blank = all): ") or None,
+                )
             else:
                 self.out("Unknown choice.")
 
