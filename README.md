@@ -31,8 +31,8 @@ renewable share, and emissions.
   demand-vs-generation, emissions-over-time, and a price duration curve (matplotlib).
 
 ## How it's built
-Spec-driven delivery, ports & adapters, real TDD — see [`CLAUDE.md`](CLAUDE.md) for the
-method and [`docs/`](docs/) for the PRD, architecture, ADRs, and build plan.
+Spec-driven delivery, ports & adapters, real TDD — see [`docs/`](docs/) for the PRD,
+architecture, ADRs, and build plan.
 
 ## Quick start
 ```bash

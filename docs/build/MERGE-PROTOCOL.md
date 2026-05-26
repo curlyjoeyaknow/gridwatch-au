@@ -1,7 +1,6 @@
 # Merge Protocol
 
-> How a track lands on `main`. Standing rules in `../../CLAUDE.md` win on conflict.
-> Companion to `build-plan.md` (the tracks).
+> How a track lands on `main`. Companion to `build-plan.md` (the tracks).
 
 ## The rule
 **Every track lands via a reviewed PR into `main`. No direct pushes to `main`.** Per-task

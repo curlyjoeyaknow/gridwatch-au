@@ -45,7 +45,7 @@ insights — built cleanly with OOP and robust error handling.
 - **Robustness**: a typed exception hierarchy; the CLI never crashes on bad input,
   network failure, or a corrupt file — it reports and continues.
 - **Real data & real tests**: live source for runtime; an offline captured fixture for
-  tests; persistence tested against real files (CLAUDE.md non-negotiables).
+  tests; persistence tested against real files.
 
 ## Success criteria
 - `pytest -q` green (full suite, offline); `ruff` clean; CI green on PRs.
