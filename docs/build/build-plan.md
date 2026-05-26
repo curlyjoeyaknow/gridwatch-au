@@ -96,3 +96,7 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 | 11.1 | `domain/aggregate.py` — bucket by hour/day/week/month → `PeriodPoint` | ✅ |
 | 11.2 | `viz.period_trend_chart`; manager `trends()` | ✅ |
 | 11.3 | Web `/trends` (+ CSV + trend chart) and CLI trends (option 14) | ✅ |
+
+### Track 12 — Live filter-driven charts  ✅
+| 12.1 | `/table.json` filtered series endpoint (magnitude-ranked, hourly buckets) | ✅ |
+| 12.2 | Vendored Chart.js; live line+bar charts on `/table` that redraw on filter change | ✅ |

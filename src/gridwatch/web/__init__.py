@@ -11,6 +11,8 @@ import csv
 import io
 import os
 import tempfile
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from flask import (
@@ -61,6 +63,68 @@ TREND_COLUMNS = [
     "avg_demand_mw",
     "peak_demand_mw",
 ]
+
+
+MAX_SERIES = 8
+
+
+def _series_payload(rows: list[dict]) -> dict:
+    """Build a compact, chart-ready payload from filtered reading rows.
+
+    Groups by fuel_tech (else metric), buckets values into hourly means for a time
+    series, and a per-group average for a breakdown bar. Bounded in size for the browser.
+    """
+    empty = {
+        "count": 0,
+        "unit": None,
+        "labels": [],
+        "series": [],
+        "breakdown": {"labels": [], "avg": [], "sum": []},
+    }
+    if not rows:
+        return empty
+
+    by_bucket: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    label_order: dict[str, datetime] = {}
+    group_values: dict[str, list[float]] = defaultdict(list)
+    units: set[str] = set()
+
+    for row in rows:
+        group = row.get("fuel_tech") or row.get("metric")
+        ts = datetime.fromisoformat(row["timestamp"]).replace(minute=0, second=0, microsecond=0)
+        label = ts.strftime("%m-%d %H:00")
+        value = float(row["value"])
+        by_bucket[group][label].append(value)
+        label_order.setdefault(label, ts)
+        group_values[group].append(value)
+        if row.get("unit"):
+            units.add(row["unit"])
+
+    labels = sorted(label_order, key=lambda lab: label_order[lab])
+    # rank by magnitude so the dominant fuels show, not tiny curtailment/battery streams
+    top_groups = sorted(
+        group_values, key=lambda g: sum(abs(v) for v in group_values[g]), reverse=True
+    )[:MAX_SERIES]
+
+    series = []
+    for group in top_groups:
+        data = []
+        for label in labels:
+            vals = by_bucket[group].get(label)
+            data.append(round(sum(vals) / len(vals), 2) if vals else None)
+        series.append({"label": group, "data": data})
+
+    return {
+        "count": len(rows),
+        "unit": next(iter(units)) if len(units) == 1 else "mixed",
+        "labels": labels,
+        "series": series,
+        "breakdown": {
+            "labels": top_groups,
+            "avg": [round(sum(group_values[g]) / len(group_values[g]), 2) for g in top_groups],
+            "sum": [round(sum(group_values[g]), 2) for g in top_groups],
+        },
+    }
 
 
 def _parse_filters(args) -> dict:
@@ -138,6 +202,15 @@ def create_app(*, manager=None, source=None, ledger=None, chart_dir=None) -> Fla
             page_size=PAGE_SIZE,
             sort_options=SORT_OPTIONS,
         )
+
+    @app.get("/table.json")
+    def table_json():
+        filters = _parse_filters(request.args)
+        try:
+            result = mgr.query(limit=None, **filters)
+        except GridWatchError as exc:
+            return {"error": str(exc)}, 400
+        return _series_payload(result.rows)
 
     @app.get("/table.csv")
     def table_csv():
