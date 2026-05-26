@@ -37,6 +37,18 @@ ruff check src tests          # lint
 python -m gridwatch.cli       # run the menu-driven app
 ```
 
+## Example (live, last 7 days)
+```
+Region    Renewable %   Intensity     Gen MWh
+TAS1            99.8%       0.020      204159     # ~all hydro
+SA1             68.7%       0.297      239297     # wind + solar
+QLD1            33.6%       0.593     1213865
+NSW1            32.8%       0.674     1345371
+VIC1            28.5%       0.916     1105084     # brown coal
+```
+Charts (fuel mix, renewable share, emissions intensity, price trend) are written to
+`outputs/` as PNGs.
+
 ## Data source
 OpenElectricity v4 static feed (free, no key, no account):
 `https://data.openelectricity.org.au/v4/stats/au/NEM/{REGION}/power/7d.json`
