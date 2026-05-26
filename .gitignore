@@ -1,0 +1,21 @@
+# venv / build (anchored to repo root so docs/build/ is NOT ignored)
+.venv/
+/build/
+/dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# generated artefacts
+outputs/*.png
+data/*.json
+data/*.csv
+
+# keep the directories themselves
+!data/.gitkeep
+!outputs/.gitkeep
