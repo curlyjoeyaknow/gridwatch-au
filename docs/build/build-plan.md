@@ -63,9 +63,9 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 | 3.2 | `adapters/fake_source.py` — `FakeDataSource` for tests | ✅ |
 | 3.3 | `adapters/json_repo.py`, `adapters/csv_repo.py` — `Repository` impls | ✅ |
 
-### Track 4 — Visualisations  ⬜
-| 4.1 | `viz/charts.py` — fuel mix · renewable share · emissions · price (PNG) | ⬜ |
+### Track 4 — Visualisations  ✅
+| 4.1 | `viz/charts.py` — fuel mix · renewable share · emissions · price (PNG) | ✅ |
 
-### Track 5 — CLI & e2e  ⬜
-| 5.1 | `cli.py` — menu-driven driving adapter, per-action error handling | ⬜ |
-| 5.2 | Live end-to-end run against the real API; finalise README | ⬜ |
+### Track 5 — CLI & e2e  ✅
+| 5.1 | `cli.py` — menu-driven driving adapter, per-action error handling | ✅ |
+| 5.2 | Live end-to-end run against the real API; finalise README | ✅ |
