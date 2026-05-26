@@ -88,6 +88,41 @@ def test_chart_for_empty_region_404(client):
     assert client.get("/charts/fuelmix/NSW1.png").status_code == 404
 
 
+def test_table_json_returns_filtered_series(client):
+    resp = client.get("/table.json?metric=power")
+    assert resp.status_code == 200
+    assert resp.mimetype == "application/json"
+    data = resp.get_json()
+    assert data["count"] > 0
+    assert data["unit"] == "MW"
+    assert data["series"] and data["labels"]
+    assert "breakdown" in data
+
+
+def test_table_json_respects_renewable_filter(client):
+    data = client.get("/table.json?metric=power&renewable_only=on").get_json()
+    # SA1 fixture has one renewable power fuel: wind
+    assert [s["label"] for s in data["series"]] == ["wind"]
+
+
+def test_table_json_bad_sort_returns_400(client):
+    resp = client.get("/table.json?sort_by=nope")
+    assert resp.status_code == 400
+    assert "error" in resp.get_json()
+
+
+def test_chartjs_is_served(client):
+    resp = client.get("/static/chart.min.js")
+    assert resp.status_code == 200
+    assert b"Chart" in resp.data
+
+
+def test_table_page_wires_charts(client):
+    html = client.get("/table").data
+    assert b"lineChart" in html and b"barChart" in html
+    assert b"chart.min.js" in html and b"table.json" in html
+
+
 def test_trends_page_renders_summary(client):
     resp = client.get("/trends?period=day")
     assert resp.status_code == 200

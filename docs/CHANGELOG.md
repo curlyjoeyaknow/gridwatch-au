@@ -5,7 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Time-bucketed aggregation + trends (PR #10), on branch `track-11-trends`.
+Live filter-driven charts on the data table (PR #11), on branch `track-12-live-charts`.
+
+### Added
+- **`/table.json`** — a JSON endpoint that turns the current filtered query into a
+  compact, chart-ready payload: per-fuel hourly-mean **time series** + an **average-by-fuel
+  breakdown**, ranked by magnitude (so dominant fuels show, capped at 8 series).
+- **Live charts on `/table`** — a line + bar chart (vendored **Chart.js**, offline) that
+  **redraw as you change filters** (debounced fetch, no page reload). The table still
+  paginates server-side on Apply.
+- Vendored `web/static/chart.min.js` (MIT); added to package data.
+- **Tests** — `/table.json` filtering/shape, 400 on bad sort, static asset served, and
+  the table page chart wiring (full suite 181).
+
+Time-bucketed aggregation + trends (PR #10).
 
 ### Added
 - **Aggregation engine** — `domain/aggregate.py`: `PeriodPoint` + `aggregate(readings,
