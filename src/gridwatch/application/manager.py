@@ -8,15 +8,20 @@ or behind a port.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
+from gridwatch.contracts.ingest import IngestEvent
 from gridwatch.contracts.readings import Reading
-from gridwatch.contracts.regions import validate_region
+from gridwatch.contracts.regions import NEM_REGIONS, validate_region
 from gridwatch.contracts.summary import RegionSummary
 from gridwatch.domain import analytics
 from gridwatch.domain.region import Region
+from gridwatch.domain.replay import replay_to_regions
 from gridwatch.exceptions import DataSourceError, RegionNotFoundError
 from gridwatch.ports.datasource import DataSource
+from gridwatch.ports.ledger import EventLedger
 from gridwatch.ports.repository import Repository
 
 
@@ -54,6 +59,42 @@ class EnergyGridManager:
         region.add_readings(readings)
         self._regions[key] = region
         return region
+
+    # --- bulk fetch + append-only ledger (ADR-007) -----------------------
+    def bulk_fetch(
+        self,
+        ledger: EventLedger,
+        source: DataSource | None = None,
+        regions: list[str] | None = None,
+    ) -> dict[str, int]:
+        """Fetch regions and append every reading to the ledger as IngestEvents.
+
+        Returns the per-region event count. Does not mutate in-memory state — call
+        `load_from_ledger` to derive it.
+        """
+        src = source or self._source
+        if src is None:
+            raise DataSourceError("no data source configured for bulk fetch")
+        codes = [validate_region(c) for c in (regions or NEM_REGIONS)]
+        batch_id = uuid4().hex
+        ingested_at = datetime.now(UTC)
+        source_name = getattr(src, "name", "unknown")
+        counts: dict[str, int] = {}
+        for code in codes:
+            readings = src.fetch_readings(code)
+            events = [
+                IngestEvent.from_reading(
+                    r, source=source_name, batch_id=batch_id, ingested_at=ingested_at
+                )
+                for r in readings
+            ]
+            ledger.append(events)
+            counts[code] = len(events)
+        return counts
+
+    def load_from_ledger(self, ledger: EventLedger) -> None:
+        """Replace in-memory state with the ledger's replayed (deduplicated) state."""
+        self._regions = {r.code: r for r in replay_to_regions(ledger.read_all())}
 
     # --- manual reading CRUD ---------------------------------------------
     def add_reading(self, reading: Reading) -> None:

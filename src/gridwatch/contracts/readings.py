@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar
 
-from gridwatch.contracts.fueltech import FuelTech
+from gridwatch.contracts.fueltech import FuelTech, classify
 from gridwatch.exceptions import ValidationError
 
 
@@ -100,3 +100,30 @@ class PriceReading(Reading):
 class DemandReading(Reading):
     metric: ClassVar[str] = "demand"
     unit: ClassVar[str] = "MW"
+
+
+_READING_CLASSES = (PowerReading, EmissionReading, PriceReading, DemandReading)
+_BY_METRIC = {cls.metric: cls for cls in _READING_CLASSES}
+
+
+def reading_from_row(row: dict) -> Reading:
+    """Rebuild the correct Reading subclass from a serialised row (dispatch on metric).
+
+    Accepts JSON dicts and CSV string-dicts; raises ValidationError on a corrupt row.
+    """
+    try:
+        metric = row["metric"]
+        region = row["region"]
+        timestamp = datetime.fromisoformat(row["timestamp"])
+        value = float(row["value"])
+        interval = int(float(row["interval_minutes"]))
+        fuel_tech = row.get("fuel_tech") or None
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValidationError(f"corrupt reading row {row!r}: {exc}") from exc
+
+    cls = _BY_METRIC.get(metric)
+    if cls is None:
+        raise ValidationError(f"unknown metric {metric!r} in row")
+    if cls in (PowerReading, EmissionReading):
+        return cls(region, timestamp, value, interval, fuel=classify(fuel_tech or ""))
+    return cls(region, timestamp, value, interval)

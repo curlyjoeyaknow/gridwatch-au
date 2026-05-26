@@ -12,7 +12,9 @@ from pathlib import Path
 
 from gridwatch.adapters.csv_repo import CsvRepository
 from gridwatch.adapters.json_repo import JsonRepository
+from gridwatch.adapters.jsonl_ledger import JsonlEventLedger
 from gridwatch.adapters.openelectricity import OpenElectricityClient
+from gridwatch.adapters.parquet_ledger import ParquetEventLedger
 from gridwatch.adapters.sqlite_repo import SqliteRepository
 from gridwatch.application.manager import EnergyGridManager
 from gridwatch.contracts.fueltech import classify
@@ -38,10 +40,13 @@ MENU = """
  8) Load dataset
  9) Add a manual reading
 10) Delete readings
+11) Bulk fetch all regions -> append-only ledger
+12) Load state from a ledger (replay)
  0) Exit
 """
 
 _REPOS = {"json": JsonRepository, "csv": CsvRepository, "sqlite": SqliteRepository}
+_LEDGERS = {"jsonl": JsonlEventLedger, "parquet": ParquetEventLedger}
 
 
 class GridWatchCLI:
@@ -167,6 +172,33 @@ class GridWatchCLI:
         self.out(f"Loaded {len(self.manager.regions())} region(s) from {path}")
         return True
 
+    def bulk_fetch(self, ledger_fmt: str, path: str | Path) -> bool:
+        ledger_cls = _LEDGERS.get(ledger_fmt.lower())
+        if ledger_cls is None:
+            self.out(f"Error: unknown ledger format {ledger_fmt!r} (use jsonl or parquet)")
+            return False
+        try:
+            counts = self.manager.bulk_fetch(ledger_cls(path))
+        except GridWatchError as exc:
+            self.out(f"Error: {exc}")
+            return False
+        total = sum(counts.values())
+        self.out(f"Appended {total} events to {path}: {counts}")
+        return True
+
+    def load_ledger(self, ledger_fmt: str, path: str | Path) -> bool:
+        ledger_cls = _LEDGERS.get(ledger_fmt.lower())
+        if ledger_cls is None:
+            self.out(f"Error: unknown ledger format {ledger_fmt!r} (use jsonl or parquet)")
+            return False
+        try:
+            self.manager.load_from_ledger(ledger_cls(path))
+        except GridWatchError as exc:
+            self.out(f"Error: {exc}")
+            return False
+        self.out(f"Replayed ledger {path} → {len(self.manager.regions())} region(s).")
+        return True
+
     def add_reading(self, region, metric, value, interval, fuel_tech=None, timestamp=None) -> bool:
         try:
             code = validate_region(region)
@@ -249,6 +281,10 @@ class GridWatchCLI:
                 )
             elif choice == "10":
                 self.delete(self._ask("Region: "), self._ask("Metric: "))
+            elif choice == "11":
+                self.bulk_fetch(self._ask("Ledger format (jsonl/parquet): "), self._ask("Path: "))
+            elif choice == "12":
+                self.load_ledger(self._ask("Ledger format (jsonl/parquet): "), self._ask("Path: "))
             else:
                 self.out("Unknown choice.")
 

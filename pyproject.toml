@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "requests>=2.31",
     "matplotlib>=3.8",
+    "pyarrow>=15.0",
 ]
 
 [project.optional-dependencies]
