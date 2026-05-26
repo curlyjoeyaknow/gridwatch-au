@@ -71,6 +71,23 @@ def test_save_then_load_in_a_fresh_manager(tmp_path):
     assert fresh.summary("SA1") is True
 
 
+def test_bulk_fetch_then_load_ledger(tmp_path):
+    cli, out = _cli(tmp_path)
+    ledger = tmp_path / "ledger.jsonl"
+    assert cli.bulk_fetch("jsonl", ledger) is True
+    assert any("appended" in line.lower() for line in out)
+
+    fresh = GridWatchCLI(EnergyGridManager(), out=lambda *_: None, chart_dir=tmp_path)
+    assert fresh.load_ledger("jsonl", ledger) is True
+    assert fresh.summary("SA1") is True
+
+
+def test_bulk_fetch_unknown_ledger_format_reports_error(tmp_path):
+    cli, out = _cli(tmp_path)
+    assert cli.bulk_fetch("xml", tmp_path / "x") is False
+    assert any("error" in line.lower() for line in out)
+
+
 def test_run_loop_drives_fetch_then_exit(tmp_path):
     # menu: 1 = fetch -> "SA1" -> 0 = exit
     scripted = iter(["1", "SA1", "0"])

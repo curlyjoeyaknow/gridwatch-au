@@ -93,6 +93,8 @@ def map_payload(payload: dict, region: str) -> list[Reading]:
 
 
 class OpenElectricityClient(DataSource):
+    name = "openelectricity"
+
     def __init__(self, *, timeout: float = 20.0, session=None, base_url: str = BASE_URL):
         self._timeout = timeout
         self._session = session or requests.Session()

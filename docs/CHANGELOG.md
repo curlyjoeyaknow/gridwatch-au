@@ -5,7 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-SQLite repository adapter (PR #5), on branch `track-6-sqlite`.
+Append-only ingest ledger + bulk fetch (PR #6), on branch `track-7-ingest-ledger`.
+
+### Added
+- **`IngestEvent` (ADR-007)** — `contracts/ingest.py`: envelope (`event_id`,
+  `ingested_at`, `source`, `batch_id`) + reading payload; `from_reading`/`to_reading`/
+  row round-trip.
+- **`EventLedger` port** — `ports/ledger.py` (`append`/`read_all`), with
+  `adapters/jsonl_ledger.py` (append-only JSON Lines) and `adapters/parquet_ledger.py`
+  (append = new immutable Parquet file per batch; `pyarrow`).
+- **Replay projection** — `domain/replay.py`: folds events → Regions, deduping by
+  `(region, metric, fuel_tech, timestamp)` keeping the latest `ingested_at`.
+- **Manager** — `bulk_fetch(ledger, …)` appends every reading as an event;
+  `load_from_ledger()` derives state by replay. Data sources carry a `name` for lineage.
+- **CLI** — menu options 11 (bulk fetch → ledger) and 12 (replay a ledger).
+- **Refactor** — `reading_from_row` moved into `contracts/readings.py` (spine owns its
+  rehydration; raises `ValidationError`); `adapters/serde.py` re-exports it.
+- **Tests** — IngestEvent round-trip, ledger append/read for both adapters, replay
+  dedup, bulk-fetch/load-from-ledger flows (full suite 125).
+
+### Changed
+- Added `pyarrow` runtime dependency (Parquet ledger).
+
+SQLite repository adapter (PR #5).
 
 ### Added
 - **`SqliteRepository` (ADR-006)** — `adapters/sqlite_repo.py`: a third interchangeable
