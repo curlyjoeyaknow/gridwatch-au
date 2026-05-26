@@ -85,5 +85,5 @@ Legend: ✅ done · 🟡 partial · ⬜ todo
 | 8.1 | `application/query.py` — filter/sort/paginate over all local data | ✅ |
 | 8.2 | CLI browse table (option 13) + CSV export of a query result | ✅ |
 
-### Track 9 — More chart types  ⬜
-| 9.1 | stacked-area generation · price duration curve · share/emissions over time · demand-vs-gen | ⬜ |
+### Track 9 — More chart types  ✅
+| 9.1 | stacked-area generation · price duration curve · share/emissions over time · demand-vs-gen | ✅ |

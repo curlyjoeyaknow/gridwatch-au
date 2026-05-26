@@ -51,6 +51,16 @@ MENU = """
 _REPOS = {"json": JsonRepository, "csv": CsvRepository, "sqlite": SqliteRepository}
 _LEDGERS = {"jsonl": JsonlEventLedger, "parquet": ParquetEventLedger}
 
+# region-scoped chart kinds (each takes a Region + output path)
+_REGION_CHARTS = {
+    "price": charts.price_trend_chart,
+    "stack": charts.generation_stack_chart,
+    "sharetime": charts.renewable_share_over_time,
+    "demandgen": charts.demand_vs_generation_chart,
+    "emissionstime": charts.emissions_over_time,
+    "duration": charts.price_duration_curve,
+}
+
 
 class GridWatchCLI:
     def __init__(
@@ -135,12 +145,12 @@ class GridWatchCLI:
             path = self.chart_dir / f"{kind}_{tag}.png"
             if kind == "fuelmix":
                 charts.fuel_mix_chart(self.manager.summarise(region), path)
-            elif kind == "price":
-                charts.price_trend_chart(self.manager.get_region(region), path)
             elif kind == "share":
                 charts.renewable_share_chart(self.manager.compare(), path)
             elif kind == "emissions":
                 charts.emissions_chart(self.manager.compare(), path)
+            elif kind in _REGION_CHARTS:
+                _REGION_CHARTS[kind](self.manager.get_region(region), path)
             else:
                 raise ValidationError(f"unknown chart kind {kind!r}")
         except GridWatchError as exc:
@@ -313,7 +323,10 @@ class GridWatchCLI:
                 )
             elif choice == "6":
                 self.visualise(
-                    self._ask("Chart (fuelmix/share/emissions/price): ").lower(),
+                    self._ask(
+                        "Chart (share/emissions = all; "
+                        "fuelmix/price/stack/sharetime/demandgen/emissionstime/duration = region): "
+                    ).lower(),
                     self._ask("Region (blank for share/emissions): ") or None,
                 )
             elif choice == "7":
