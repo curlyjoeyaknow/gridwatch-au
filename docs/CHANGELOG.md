@@ -5,7 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Append-only ingest ledger + bulk fetch (PR #6), on branch `track-7-ingest-ledger`.
+Query / data-table browse with filters (PR #7), on branch `track-8-query-table`.
+
+### Added
+- **Query engine** — `application/query.py`: pure `query_readings()` over readings with
+  filters (region, metric, fuel_tech, fuel category, renewable-only, value range, time
+  window), sort (timestamp/value/region/metric/fuel_tech, asc/desc), and pagination;
+  returns a `QueryResult` (rows + total + offset/limit).
+- **`EnergyGridManager.query()` / `all_readings()`** — query across all loaded
+  (ledger-derived) data.
+- **CLI data-table browse (option 13)** — column-aligned paged table with `[n]ext/[p]rev`
+  navigation, filter prompts, and `[e]xport` of the full filtered result to CSV.
+- **Tests** — query filter/sort/paginate/edge cases; CLI browse render, filtered narrow,
+  and CSV export (full suite 138).
+
+Append-only ingest ledger + bulk fetch (PR #6).
 
 ### Added
 - **`IngestEvent` (ADR-007)** — `contracts/ingest.py`: envelope (`event_id`,
