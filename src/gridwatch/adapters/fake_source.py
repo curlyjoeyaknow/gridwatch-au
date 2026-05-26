@@ -11,6 +11,8 @@ from gridwatch.ports.datasource import DataSource
 
 
 class FakeDataSource(DataSource):
+    name = "fake"
+
     def __init__(self, readings_by_region: dict[str, list[Reading]] | None = None):
         self._data: dict[str, list[Reading]] = dict(readings_by_region or {})
 
