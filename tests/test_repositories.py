@@ -1,4 +1,4 @@
-"""Persistence round-trips against REAL files (tmp_path), never mocks (ADR-004)."""
+"""Persistence round-trips against REAL files (tmp_path), never mocks."""
 
 from datetime import UTC, datetime
 

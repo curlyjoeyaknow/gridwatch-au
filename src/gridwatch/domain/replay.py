@@ -1,4 +1,4 @@
-"""Replay projection — fold an ingest-event stream into current Regions (ADR-007).
+"""Replay projection — fold an ingest-event stream into current Regions.
 
 State is derived, not stored: deduplicate by (region, metric, fuel_tech, timestamp),
 keeping the observation with the latest `ingested_at` so revisions supersede.

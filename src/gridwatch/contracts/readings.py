@@ -1,4 +1,4 @@
-"""The `Reading` hierarchy — the canonical record shape (ADR-003).
+"""The `Reading` hierarchy — the canonical record shape.
 
 An abstract `Reading` holds the common fields (region, timestamp, value,
 interval); each concrete subclass knows its own metric and unit. `unit`,

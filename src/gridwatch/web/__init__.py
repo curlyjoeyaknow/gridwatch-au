@@ -1,4 +1,4 @@
-"""GridWatch AU web dashboard — a Flask driving adapter (ADR-008).
+"""GridWatch AU web dashboard — a Flask driving adapter.
 
 Thin: routes call the EnergyGridManager facade, the query engine, and the chart
 renderers. No domain logic lives here. `create_app()` is a factory so it can be

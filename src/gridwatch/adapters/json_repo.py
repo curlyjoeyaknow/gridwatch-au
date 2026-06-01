@@ -1,4 +1,4 @@
-"""JsonRepository — canonical, loss-less persistence (ADR-004)."""
+"""JsonRepository — canonical, loss-less persistence."""
 
 from __future__ import annotations
 

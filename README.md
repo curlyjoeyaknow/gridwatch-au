@@ -8,8 +8,7 @@ National Electricity Market (NEM) region, pulls **live data** from the free
 renewable share, and emissions.
 
 > **Scope:** the **NEM** — `NSW1`, `QLD1`, `VIC1`, `SA1`, `TAS1`. Western Australia
-> (SWIS) and the NT are not part of the NEM and are out of scope by design (see
-> [ADR-005](docs/architecture/decisions/ADR-005-scope-nem-only.md)).
+> (SWIS) and the NT are not part of the NEM and are out of scope by design.
 
 ## What it does
 - **Maintain (CRUD):** import or hand-add regions and readings; edit/delete a reading.
@@ -31,8 +30,8 @@ renewable share, and emissions.
   demand-vs-generation, emissions-over-time, and a price duration curve (matplotlib).
 
 ## How it's built
-Spec-driven delivery, ports & adapters, real TDD — see [`docs/`](docs/) for the PRD,
-architecture, ADRs, and build plan.
+Ports & adapters (hexagonal) around a pure domain core, with a test suite that runs
+offline — see [`docs/architecture/system-architecture.md`](docs/architecture/system-architecture.md).
 
 ## Quick start
 ```bash
@@ -74,5 +73,4 @@ Charts (fuel mix, renewable share, emissions intensity, price trend) are written
 ## Data source
 OpenElectricity v4 static feed (free, no key, no account):
 `https://data.openelectricity.org.au/v4/stats/au/NEM/{REGION}/power/7d.json`
-(requires a `User-Agent` header — handled in the adapter). See
-[ADR-002](docs/architecture/decisions/ADR-002-data-source-openelectricity.md).
+(requires a `User-Agent` header — handled in the adapter).

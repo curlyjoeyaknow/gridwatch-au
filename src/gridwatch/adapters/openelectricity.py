@@ -1,4 +1,4 @@
-"""OpenElectricity API adapter (ADR-002).
+"""OpenElectricity API adapter.
 
 Fetches the free v4 7-day feed and maps the vendor payload into our `Reading`
 objects. The vendor shape stops here — `map_payload` is a pure function so the

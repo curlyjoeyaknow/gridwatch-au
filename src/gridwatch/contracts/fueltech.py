@@ -1,4 +1,4 @@
-"""Fuel-tech taxonomy and renewable-classification policy (ADR-003).
+"""Fuel-tech taxonomy and renewable-classification policy.
 
 This is the single place that decides what a raw vendor `fuel_tech` string *means*:
 its category, a human label, whether it is renewable, and whether it counts as
@@ -27,14 +27,14 @@ class FuelCategory(Enum):
     OTHER = "other"
 
 
-# Renewable sources (ADR-003): stored/interconnect/curtailment flows are NOT here.
+# Renewable sources: stored/interconnect/curtailment flows are NOT here.
 RENEWABLE_CATEGORIES = frozenset(
     {FuelCategory.SOLAR, FuelCategory.WIND, FuelCategory.HYDRO, FuelCategory.BIOENERGY}
 )
 
 # Categories that count as generation-by-source for renewable share & emissions
 # intensity. Battery/pumps/import/export/curtailment/other are excluded so they
-# distort neither numerator nor denominator (ADR-003).
+# distort neither numerator nor denominator.
 GENERATION_CATEGORIES = RENEWABLE_CATEGORIES | {
     FuelCategory.COAL,
     FuelCategory.GAS,

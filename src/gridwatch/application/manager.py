@@ -1,7 +1,7 @@
 """EnergyGridManager — the facade the CLI talks to.
 
 Orchestrates region/reading CRUD, search, live import, summaries, and persistence
-through the ports (ADR-001). Holds the loaded regions; everything below it is pure
+through the ports. Holds the loaded regions; everything below it is pure
 or behind a port.
 """
 
@@ -62,7 +62,7 @@ class EnergyGridManager:
         self._regions[key] = region
         return region
 
-    # --- bulk fetch + append-only ledger (ADR-007) -----------------------
+    # --- bulk fetch + append-only ledger -----------------------
     def bulk_fetch(
         self,
         ledger: EventLedger,

@@ -1,7 +1,7 @@
-"""SqliteRepository — indexed, SQL-backed snapshot storage (ADR-006).
+"""SqliteRepository — indexed, SQL-backed snapshot storage.
 
 A third interchangeable `Repository` (alongside JSON/CSV). `save` is a snapshot
-replace inside one transaction; the append-only history lives in the ledger (ADR-007).
+replace inside one transaction; the append-only history lives in the ledger.
 """
 
 from __future__ import annotations

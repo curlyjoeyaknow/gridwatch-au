@@ -1,4 +1,4 @@
-"""NEM region codes — the scope boundary (ADR-005).
+"""NEM region codes — the scope boundary.
 
 Western Australia (SWIS) and the NT are not in the NEM and are out of scope.
 """
@@ -21,7 +21,7 @@ def is_valid_region(code: str) -> bool:
 
 
 def validate_region(code: str) -> str:
-    """Normalise and validate a region code, or raise ValidationError (ADR-005)."""
+    """Normalise and validate a region code, or raise ValidationError."""
     if not isinstance(code, str) or not code.strip():
         raise ValidationError("region code must be a non-empty string")
     normalised = code.strip().upper()

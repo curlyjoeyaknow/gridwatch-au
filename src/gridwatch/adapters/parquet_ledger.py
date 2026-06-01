@@ -1,4 +1,4 @@
-"""ParquetEventLedger — append-only columnar ledger (ADR-007).
+"""ParquetEventLedger — append-only columnar ledger.
 
 Parquet files are immutable, so each append writes a new file into a directory;
 `read_all` reads every file back. Compact for large bulk fetches.

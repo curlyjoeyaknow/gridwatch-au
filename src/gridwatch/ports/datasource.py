@@ -1,4 +1,4 @@
-"""DataSource port — where readings come from (ADR-001).
+"""DataSource port — where readings come from.
 
 The core depends on this ABC, never on `requests` or a vendor payload. Adapters
 (real API client, fake) implement it and return our `Reading` objects.

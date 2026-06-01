@@ -1,4 +1,4 @@
-"""Repository port — where datasets are saved/loaded (ADR-001, ADR-004).
+"""Repository port — where datasets are saved/loaded.
 
 Speaks in domain terms (`Region`). Concrete adapters (`JsonRepository`,
 `CsvRepository`) live in `adapters/` and raise `PersistenceError` on I/O failure.

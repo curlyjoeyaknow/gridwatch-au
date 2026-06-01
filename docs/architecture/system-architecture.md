@@ -3,7 +3,7 @@
 ## Shape
 Ports & adapters (hexagonal) around a pure domain core. Dependencies point **inward**:
 adapters and the CLI depend on the core; the core depends only on its own contracts and
-the port ABCs (ADR-001).
+the port ABCs.
 
 ```
             driving adapter                         driven adapters
@@ -30,12 +30,12 @@ the port ABCs (ADR-001).
 ## Layers
 - **contracts/ (spine)** — `Reading` ABC + `PowerReading`/`EmissionReading`/
   `PriceReading`/`DemandReading`; `FuelTech` + `FuelCategory`; `RegionSummary`. Pure
-  data + classification policy (ADR-003).
-- **ports/ (spine)** — `DataSource` and `Repository` ABCs (ADR-001).
+  data + classification policy.
+- **ports/ (spine)** — `DataSource` and `Repository` ABCs.
 - **domain/** — `Region` (aggregate that owns its readings) and `analytics` (pure
   functions computing summaries). No I/O.
-- **adapters/** — `OpenElectricityClient` (real, maps vendor JSON → readings, ADR-002),
-  `FakeDataSource`, `JsonRepository`, `CsvRepository` (ADR-004).
+- **adapters/** — `OpenElectricityClient` (real, maps vendor JSON → readings),
+  `FakeDataSource`, `JsonRepository`, `CsvRepository`.
 - **application/** — `EnergyGridManager`, the facade the CLI talks to; orchestrates
   import/CRUD/search/summary/persist via the ports.
 - **viz/** — `charts`, matplotlib renderers over readings/summaries.

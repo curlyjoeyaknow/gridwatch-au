@@ -1,4 +1,4 @@
-"""IngestEvent — one observed reading, recorded at download time (ADR-007).
+"""IngestEvent — one observed reading, recorded at download time.
 
 Envelope (event_id, ingested_at, source, batch_id) + the reading payload. The
 ledger stores these append-only; `to_reading()` rebuilds the typed Reading and

@@ -1,4 +1,4 @@
-"""SqliteRepository round-trips against a REAL on-disk database (ADR-006)."""
+"""SqliteRepository round-trips against a REAL on-disk database."""
 
 from datetime import UTC, datetime
 

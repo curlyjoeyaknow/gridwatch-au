@@ -1,7 +1,7 @@
 """Analytics — pure functions that fold readings into insight.
 
 No I/O, no mutation. Renewable share and emissions intensity follow the
-generation policy in ADR-003 (storage/interconnect/curtailment excluded).
+generation policy (storage/interconnect/curtailment excluded).
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""EventLedger port — the append-only ingest history (ADR-007).
+"""EventLedger port — the append-only ingest history.
 
 Adapters (`JsonlEventLedger`, `ParquetEventLedger`) implement append/read; the core
 never overwrites — appends only — and derives state by replaying what it reads.

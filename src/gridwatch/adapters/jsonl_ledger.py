@@ -1,4 +1,4 @@
-"""JsonlEventLedger — append-only JSON Lines (ADR-007).
+"""JsonlEventLedger — append-only JSON Lines.
 
 One event per line; append opens the file in append mode and never rewrites it.
 Simple and human-readable; for large bulk fetches prefer the Parquet ledger.

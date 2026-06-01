@@ -1,4 +1,4 @@
-"""CsvRepository — flat export/interop format (ADR-004).
+"""CsvRepository — flat export/interop format.
 
 One row per reading. JSON is authoritative; CSV is the spreadsheet-friendly view.
 """
