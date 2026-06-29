@@ -155,7 +155,6 @@ jobs:
 
           python scripts/backfill.py \
             --start "$START" \
-            --interval 1d \
             --verbose
 
       - name: Show updated ledger size
