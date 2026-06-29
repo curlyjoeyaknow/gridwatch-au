@@ -68,11 +68,9 @@ permissions:
 env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
-  # Ledger cache key rotates weekly so the cache file stays manageable.
-  # If the weekly key misses, fall back to the previous week's key.
-  # The ledger is append-only so a cache hit always gives a valid starting point.
-  LEDGER_CACHE_KEY: gridwatch-ledger-${{ github.ref_name }}-${{ github.run_number }}
-  LEDGER_RESTORE_KEY: gridwatch-ledger-${{ github.ref_name }}-
+  # Prefix for cache key — the full key is computed dynamically per step
+  # using the ISO week number so saves overwrite within the same week.
+  LEDGER_KEY_PREFIX: gridwatch-ledger-${{ github.ref_name }}
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
@@ -112,19 +110,26 @@ jobs:
           pip install -e .  # installs the gridwatch package from src/
 
       # ── 4. Restore Parquet ledger from cache ──────────────────────────────
-      # The ledger is NOT committed to git (it can grow to gigabytes).
-      # GitHub Actions cache gives us up to 10 GB per repo — plenty for years
-      # of daily-interval NEM data.
-      # Cache key uses run_number so each run saves a new entry; the restore
-      # key prefix matches any previous run's entry.
+      # Stable weekly key: gridwatch-ledger-main-2026-W26
+      # Same key is used all week so the save overwrites in-place rather than
+      # creating a new entry each run. The restore-keys prefix catches the
+      # previous week when the week rolls over.
+      - name: Compute ledger cache key
+        id: cache-key
+        run: |
+          WEEK_KEY="${{ env.LEDGER_KEY_PREFIX }}-$(date -u +%Y-W%V)"
+          echo "key=${WEEK_KEY}" >> "$GITHUB_OUTPUT"
+          echo "prefix=${{ env.LEDGER_KEY_PREFIX }}-" >> "$GITHUB_OUTPUT"
+          echo "Ledger cache key: ${WEEK_KEY}"
+
       - name: Restore Parquet ledger cache
         id: ledger-cache
         uses: actions/cache@v4
         with:
           path: data/ledger
-          key: ${{ env.LEDGER_CACHE_KEY }}
+          key: ${{ steps.cache-key.outputs.key }}
           restore-keys: |
-            ${{ env.LEDGER_RESTORE_KEY }}
+            ${{ steps.cache-key.outputs.prefix }}
 
       - name: Show ledger status
         run: |
@@ -172,13 +177,15 @@ jobs:
           ls -lh data/views/*.json
 
       # ── 7. Save updated ledger to cache ───────────────────────────────────
-      # Always save even if a later step fails — partial progress is valuable.
+      # Always save — even if materialize fails, we keep ingested data.
+      # Uses the same weekly key so this overwrites the existing cache entry
+      # in-place rather than creating a new one each run.
       - name: Save Parquet ledger to cache
-        if: always() && inputs.views_only != 'true'
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: data/ledger
-          key: ${{ env.LEDGER_CACHE_KEY }}
+          key: ${{ steps.cache-key.outputs.key }}
 
       # ── 8. Commit data/views/*.json back to main ──────────────────────────
       # Only the small JSON view files (a few MB total) are committed.
