@@ -52,7 +52,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from gridwatch.adapters.parquet_ledger import ParquetEventLedger
-from gridwatch.contracts.fueltech import FuelCategory, classify
+from gridwatch.contracts.fueltech import FuelTech, FuelCategory, classify
 from gridwatch.contracts.ingest import IngestEvent
 from gridwatch.contracts.readings import (
     DemandReading,
@@ -73,22 +73,21 @@ INTER_CALL_SLEEP   = 0.5   # polite gap between SDK calls
 MAX_RETRIES        = 3
 RETRY_WAIT         = 10    # seconds between retries (longer for SDK errors)
 
-# fueltech_group values returned by the API → our FuelCategory mapping
-FUELTECH_GROUP_MAP: dict[str, FuelCategory] = {
-    "solar":       FuelCategory.SOLAR,
-    "wind":        FuelCategory.WIND,
-    "hydro":       FuelCategory.HYDRO,
-    "bioenergy":   FuelCategory.BIOENERGY,
-    "coal":        FuelCategory.COAL,
-    "gas":         FuelCategory.GAS,
-    "distillate":  FuelCategory.DISTILLATE,
-    "battery":     FuelCategory.BATTERY,
-    "pumps":       FuelCategory.PUMPS,
-    "imports":     FuelCategory.IMPORT,
-    "exports":     FuelCategory.EXPORT,
-    # catch-alls
-    "nuclear":     FuelCategory.OTHER,
-    "other":       FuelCategory.OTHER,
+# fueltech_group values from the API → raw strings that classify() understands.
+# The SDK returns grouped labels ("solar", "wind", "coal") — we map them to the
+# fine-grained raw strings the taxonomy recognises so classify() works correctly.
+FUELTECH_GROUP_TO_RAW: dict[str, str] = {
+    "solar":      "solar_utility",
+    "wind":       "wind",
+    "hydro":      "hydro",
+    "bioenergy":  "bioenergy_biomass",
+    "coal":       "coal_black",
+    "gas":        "gas_ccgt",
+    "distillate": "distillate",
+    "battery":    "battery_discharging",
+    "pumps":      "pumps",
+    "imports":    "imports",
+    "exports":    "exports",
 }
 
 
@@ -215,18 +214,18 @@ def energy_response_to_events(
 
     for series in resp.data:
         metric = series.metric          # "energy" | "emissions"
-        unit   = series.unit            # "MWh" | "tCO2e"
         interval_minutes = 1440         # 1d
 
         for result in series.results:
             # columns.fueltech_group may be None if the API doesn't group
-            ft_raw = result.columns.fueltech_group
-            fuel_cat = FUELTECH_GROUP_MAP.get(ft_raw.lower(), FuelCategory.OTHER) if ft_raw else None
+            ft_group = (result.columns.fueltech_group or "").lower()
+            raw_key  = FUELTECH_GROUP_TO_RAW.get(ft_group, ft_group or "other")
+            fuel: FuelTech = classify(raw_key)
 
             for point in result.data:
                 if point.value is None:
                     continue
-                ts = point.timestamp.replace(tzinfo=None)  # strip tz for our domain model
+                ts = point.timestamp.replace(tzinfo=None)  # strip tz for domain model
 
                 if metric == "energy":
                     reading = PowerReading(
@@ -234,7 +233,7 @@ def energy_response_to_events(
                         timestamp=ts,
                         value=point.value,
                         interval_minutes=interval_minutes,
-                        fuel=fuel_cat,
+                        fuel=fuel,
                     )
                 elif metric == "emissions":
                     reading = EmissionReading(
@@ -242,7 +241,7 @@ def energy_response_to_events(
                         timestamp=ts,
                         value=point.value,
                         interval_minutes=interval_minutes,
-                        fuel=fuel_cat or FuelCategory.OTHER,
+                        fuel=fuel,
                     )
                 else:
                     continue
