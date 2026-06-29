@@ -5,8 +5,8 @@
 # Install:  pip install -r scripts/requirements.txt
 # (The gridwatch package itself is installed separately via: pip install -e .)
 
-# ── API & HTTP ────────────────────────────────────────────────────────────────
-requests>=2.31.0
+# ── OpenElectricity official SDK (replaces raw requests) ─────────────────────
+openelectricity>=0.5.0
 
 # ── Env vars (reads .env for OPENELECTRICITY_API_KEY) ─────────────────────────
 python-dotenv>=1.0.0

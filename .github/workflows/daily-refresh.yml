@@ -107,7 +107,9 @@ jobs:
 
       # ── 3. Install Python dependencies ────────────────────────────────────
       - name: Install Python dependencies
-        run: pip install -r scripts/requirements.txt
+        run: |
+          pip install -r scripts/requirements.txt
+          pip install -e .  # installs the gridwatch package from src/
 
       # ── 4. Restore Parquet ledger from cache ──────────────────────────────
       # The ledger is NOT committed to git (it can grow to gigabytes).
