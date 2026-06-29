@@ -11,8 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGrain, useSummary, useLastUpdated } from "@/hooks/useViews";
 import {
-  NEM_REGIONS, REGION_NAMES, STATE_COLORS, FUEL_META,
-  fmt, fmtPrice, fmtMWh, fmtPct,
+  NEM_REGIONS, REGION_NAMES, REGION_SHORT, STATE_COLORS, FUEL_META,
+  fmt, fmtPrice, fmtMWh, fmtPct, formatPeriod,
   flattenRegion, nationalAggregate,
   type Grain, type RegionCode, type PeriodRow
 } from "@/lib/views";
@@ -88,12 +88,7 @@ export default function Costs() {
   const sliceLimits: Record<Grain, number> = { daily: 90, weekly: 104, monthly: 60, yearly: 9999 };
   const displayRows = rows.slice(-sliceLimits[grain]);
 
-  const tickFmt = (val: string) => {
-    if (!val) return "";
-    if (grain === "daily" || grain === "weekly") return val.slice(5);
-    if (grain === "monthly") return val.slice(0, 7);
-    return val.slice(0, 4);
-  };
+  const tickFmt = (val: string) => formatPeriod(val, grain);
 
   // KPIs
   const priceRows = rows.filter(r => r.avg_price !== null);

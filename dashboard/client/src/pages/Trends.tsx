@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGrain, useSummary, useLastUpdated } from "@/hooks/useViews";
 import {
-  NEM_REGIONS, REGION_NAMES, STATE_COLORS, FUEL_META,
-  fmt, fmtPct, fmtMWh, renewableColor,
+  NEM_REGIONS, REGION_NAMES, REGION_SHORT, STATE_COLORS, FUEL_META,
+  fmt, fmtPct, fmtMWh, renewableColor, formatPeriod,
   flattenRegion, nationalAggregate,
   type Grain, type RegionCode, type PeriodRow, type GrainView
 } from "@/lib/views";
@@ -84,12 +84,7 @@ export default function Trends() {
 
   const sliceLimits: Record<Grain, number> = { daily: 90, weekly: 104, monthly: 60, yearly: 9999 };
 
-  const tickFmt = (val: string) => {
-    if (!val) return "";
-    if (grain === "daily" || grain === "weekly") return val.slice(5);
-    if (grain === "monthly") return val.slice(0, 7);
-    return val.slice(0, 4);
-  };
+  const tickFmt = (val: string) => formatPeriod(val, grain);
 
   // Multi-region renewable share over time
   const renByRegion = view ? buildAllRegionRows(view, "renewable_share_pct").slice(-sliceLimits[grain]) : [];
@@ -114,7 +109,7 @@ export default function Trends() {
   // Yearly renewable share progression (bar chart, anchor to full history)
   const yearlyRen = yearlyView
     ? nationalAggregate(yearlyView).map(r => ({
-        period: r.period.slice(0, 4),
+        period: r.period, // keep full "FY2024" — formatPeriod returns it as-is for yearly
         pct: Math.round(r.renewable_share_pct * 10) / 10,
       }))
     : [];
@@ -227,7 +222,7 @@ export default function Trends() {
                 <Tooltip content={<RenTooltip />} />
                 <Legend iconSize={9} wrapperStyle={{ fontSize: 10 }} />
                 {NEM_REGIONS.map(code => (
-                  <Line key={code} type="monotone" dataKey={code} name={`${code} — ${REGION_NAMES[code]}`}
+                  <Line key={code} type="monotone" dataKey={code} name={`${REGION_SHORT[code]} — ${REGION_NAMES[code]}`}
                     stroke={STATE_COLORS[code]} strokeWidth={1.5} dot={false} connectNulls />
                 ))}
               </LineChart>
@@ -320,7 +315,7 @@ export default function Trends() {
                 <Tooltip content={<EmitTooltip />} />
                 <Legend iconSize={9} wrapperStyle={{ fontSize: 10 }} />
                 {NEM_REGIONS.map(code => (
-                  <Area key={code} type="monotone" dataKey={code} name={code}
+                  <Area key={code} type="monotone" dataKey={code} name={REGION_SHORT[code]}
                     stroke={STATE_COLORS[code]} fill={STATE_COLORS[code]} fillOpacity={0.2}
                     strokeWidth={1.5} dot={false} connectNulls stackId="e" />
                 ))}

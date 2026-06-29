@@ -11,8 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGrain, useSummary, useLastUpdated } from "@/hooks/useViews";
 import {
-  NEM_REGIONS, REGION_NAMES, STATE_COLORS, FUEL_META,
-  fmt, fmtMWh, fmtPct,
+  NEM_REGIONS, REGION_NAMES, REGION_SHORT, STATE_COLORS, FUEL_META,
+  fmt, fmtMWh, fmtPct, formatPeriod,
   flattenRegion, nationalAggregate, allFuels,
   type Grain, type RegionCode, type PeriodRow
 } from "@/lib/views";
@@ -125,13 +125,7 @@ export default function Usage() {
   const displayRows = chartRows.slice(-sliceLimits[grain]);
   const displayDemand = demandRows.slice(-sliceLimits[grain]);
 
-  // x-axis tick formatter
-  const tickFmt = (val: string) => {
-    if (!val) return "";
-    if (grain === "daily" || grain === "weekly") return val.slice(5); // MM-DD
-    if (grain === "monthly") return val.slice(0, 7);                  // YYYY-MM
-    return val.slice(0, 4);                                            // YYYY
-  };
+  const tickFmt = (val: string) => formatPeriod(val, grain);
 
   if (isLoading) return (
     <div className="p-6 space-y-5">
@@ -197,7 +191,7 @@ export default function Usage() {
             <SelectContent>
               <SelectItem value="national">National (NEM)</SelectItem>
               {NEM_REGIONS.map(code => (
-                <SelectItem key={code} value={code}>{code} — {REGION_NAMES[code]}</SelectItem>
+                <SelectItem key={code} value={code}>{REGION_SHORT[code]} — {REGION_NAMES[code]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -235,7 +229,7 @@ export default function Usage() {
           <CardTitle className="text-sm font-semibold">
             Generation by Fuel Type
             <span className="text-muted-foreground font-normal text-xs ml-2">
-              {regionFilter === "national" ? "NEM National" : `${regionFilter} — ${REGION_NAMES[regionFilter as RegionCode]}`}
+              {regionFilter === "national" ? "NEM National" : `${REGION_SHORT[regionFilter as RegionCode]} — ${REGION_NAMES[regionFilter as RegionCode]}`}
               {" · "}{GRAIN_LABELS[grain]}
             </span>
           </CardTitle>
@@ -293,7 +287,7 @@ export default function Usage() {
                 <Tooltip content={<DemandTooltip />} />
                 <Legend iconSize={9} wrapperStyle={{ fontSize: 10 }} />
                 {NEM_REGIONS.map(code => (
-                  <Bar key={code} dataKey={code} name={code} stackId="d"
+                  <Bar key={code} dataKey={code} name={REGION_SHORT[code]} stackId="d"
                     fill={STATE_COLORS[code]} radius={code === NEM_REGIONS[NEM_REGIONS.length - 1] ? [2, 2, 0, 0] : [0, 0, 0, 0]} />
                 ))}
               </BarChart>

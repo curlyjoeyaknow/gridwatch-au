@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useSummary, useLive, useLastUpdated, useGrain } from "@/hooks/useViews";
 import {
-  NEM_REGIONS, REGION_NAMES, STATE_COLORS, FUEL_META,
+  NEM_REGIONS, REGION_NAMES, REGION_SHORT, STATE_COLORS, FUEL_META,
   fmt, fmtMWh, fmtPrice, fmtPct, renewableColor,
   nationalAggregate, allFuels,
   type RegionCode, type RegionSummary
@@ -197,10 +197,10 @@ export default function Dashboard() {
               return (
                 <RenewableGauge key={code}
                   pct={s?.renewable_share_pct ?? 0}
-                  label={`${code}\n${REGION_NAMES[code]}`} />
+                  label={`${REGION_SHORT[code]}\n${REGION_NAMES[code]}`} />
               );
             })}
-            <RenewableGauge pct={nationalPct} label="NEM\nNational" />
+            <RenewableGauge pct={nationalPct} label="NEM\nNational" />  {/* NEM = no digit suffix needed */}
           </div>
         </CardContent>
       </Card>

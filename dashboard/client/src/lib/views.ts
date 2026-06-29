@@ -14,6 +14,45 @@ export const REGION_NAMES: Record<RegionCode, string> = {
   TAS1: "Tasmania",
 };
 
+// Short state labels without the NEM suffix digit
+export const REGION_SHORT: Record<RegionCode, string> = {
+  NSW1: "NSW",
+  QLD1: "QLD",
+  VIC1: "VIC",
+  SA1:  "SA",
+  TAS1: "TAS",
+};
+
+/**
+ * Format a period string for chart x-axis ticks.
+ *
+ * daily   "2024-06-29"  → "29 Jun"
+ * weekly  "2024-W26"    → "W26 '24"
+ * monthly "2024-06"     → "Jun '24"
+ * yearly  "FY2024"      → "FY2024"
+ */
+export function formatPeriod(val: string, grain: Grain): string {
+  if (!val) return "";
+  if (grain === "daily") {
+    // "2024-06-29" → "29 Jun"
+    const d = new Date(val + "T00:00:00");
+    return d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+  }
+  if (grain === "weekly") {
+    // "2024-W26" → "W26 '24"
+    const m = val.match(/^(\d{4})-W(\d{2})$/);
+    if (m) return `W${m[2]} '${m[1].slice(2)}`;
+    return val;
+  }
+  if (grain === "monthly") {
+    // "2024-06" → "Jun '24"
+    const d = new Date(val + "-01T00:00:00");
+    return d.toLocaleDateString("en-AU", { month: "short", year: "2-digit" });
+  }
+  // yearly: "FY2024" → "FY2024" (already readable)
+  return val;
+}
+
 export const STATE_COLORS: Record<RegionCode, string> = {
   NSW1: "#10b981",
   QLD1: "#f59e0b",
