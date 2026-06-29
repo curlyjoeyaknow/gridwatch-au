@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Surfaces: crisp white + cool slate ── */
+    --background: 210 20% 98%;
+    --foreground: 215 28% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 13%;
+
+    /* ── Primary: deep emerald (clean energy) ── */
+    --primary: 158 62% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    /* ── Secondary ── */
+    --secondary: 210 16% 93%;
+    --secondary-foreground: 215 25% 20%;
+
+    /* ── Muted ── */
+    --muted: 210 16% 94%;
+    --muted-foreground: 215 14% 50%;
+
+    /* ── Accent: light teal ── */
+    --accent: 162 55% 91%;
+    --accent-foreground: 158 62% 22%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 18% 88%;
+    --input: 210 18% 88%;
+    --ring: 158 62% 30%;
+
+    --radius: 0.5rem;
+
+    /* ── Chart palette (categorical) ── */
+    --chart-1: 158 62% 35%;   /* emerald — solar/wind/hydro */
+    --chart-2: 199 85% 44%;   /* sky blue */
+    --chart-3: 32 96% 56%;    /* amber */
+    --chart-4: 262 50% 55%;   /* purple */
+    --chart-5: 358 72% 54%;   /* red */
+    --chart-6: 142 68% 28%;   /* dark green */
+    --chart-7: 226 68% 56%;   /* indigo */
+    --chart-8: 17 85% 56%;    /* orange */
+
+    /* ── Dark sidebar ── */
+    --sidebar-background: 216 32% 10%;
+    --sidebar-foreground: 210 18% 82%;
+    --sidebar-primary: 158 58% 44%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 28% 17%;
+    --sidebar-accent-foreground: 210 18% 90%;
+    --sidebar-border: 216 28% 17%;
+    --sidebar-ring: 158 58% 44%;
+  }
+
+  .dark {
+    --background: 216 30% 9%;
+    --foreground: 210 18% 88%;
+    --card: 216 28% 12%;
+    --card-foreground: 210 18% 88%;
+    --popover: 216 28% 12%;
+    --popover-foreground: 210 18% 88%;
+    --primary: 158 55% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 24% 18%;
+    --secondary-foreground: 210 18% 82%;
+    --muted: 216 24% 18%;
+    --muted-foreground: 215 14% 54%;
+    --accent: 158 42% 18%;
+    --accent-foreground: 158 55% 62%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 24% 20%;
+    --input: 216 24% 20%;
+    --ring: 158 55% 42%;
+    --chart-1: 158 55% 52%;
+    --chart-2: 199 72% 58%;
+    --chart-3: 32 92% 62%;
+    --chart-4: 262 50% 68%;
+    --chart-5: 358 68% 64%;
+    --chart-6: 142 58% 44%;
+    --chart-7: 226 62% 68%;
+    --chart-8: 17 78% 66%;
+    --sidebar-background: 216 34% 8%;
+    --sidebar-foreground: 210 18% 80%;
+    --sidebar-primary: 158 55% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 28% 14%;
+    --sidebar-accent-foreground: 210 18% 88%;
+    --sidebar-border: 216 28% 14%;
+    --sidebar-ring: 158 55% 48%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+html, body, #root { height: 100%; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* tabular nums for all data */
+.num { font-variant-numeric: tabular-nums lining-nums; }
+
+/* recharts tooltip override */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+}

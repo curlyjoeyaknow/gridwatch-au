@@ -1,0 +1,18 @@
+# GridWatch AU — Python runtime dependencies for scripts/
+# Used by GitHub Actions (scripts/backfill.py + scripts/materialize.py)
+# and for local development.
+#
+# Install:  pip install -r scripts/requirements.txt
+# (The gridwatch package itself is installed separately via: pip install -e .)
+
+# ── API & HTTP ────────────────────────────────────────────────────────────────
+requests>=2.31.0
+
+# ── Env vars (reads .env for OPENELECTRICITY_API_KEY) ─────────────────────────
+python-dotenv>=1.0.0
+
+# ── Ledger serialization ──────────────────────────────────────────────────────
+pyarrow>=15.0.0          # Parquet ledger (ParquetEventLedger)
+
+# ── Materialization ───────────────────────────────────────────────────────────
+duckdb>=1.0.0            # SQL engine for aggregations in materialize.py

@@ -11,11 +11,35 @@ __pycache__/
 .coverage
 htmlcov/
 
-# generated artefacts (datasets, ledgers, charts) — never commit these
+# generated artefacts — raw ledger and charts are large, never commit them
 data/*
 outputs/*
 .ruff_cache/
 
-# keep the directories themselves
+# ── Exceptions: what CAN be committed ────────────────────────────────────────
+# Keep directory placeholders
 !data/.gitkeep
 !outputs/.gitkeep
+
+# Materialized JSON views are small (a few MB total) and ARE committed.
+# They are the contract between the Python pipeline and the React dashboard.
+# GitHub Actions refreshes them nightly and pushes the changes back to main.
+!data/views/
+!data/views/*.json
+
+# Backfill progress log (useful to track history of runs)
+!data/backfill.log
+
+# ── Dashboard (React + Vite) ──────────────────────────────────────────────────
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.env
+dashboard/.env.local
+
+# ── Misc editor / OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json

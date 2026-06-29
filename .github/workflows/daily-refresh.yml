@@ -1,0 +1,302 @@
+name: Daily Refresh — Ingest · Materialize · Deploy
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  GridWatch AU  —  automated historical data tracker
+#  UN SDG 7: Affordable and Clean Energy
+#
+#  What this workflow does every night at midnight UTC:
+#
+#  Job 1  (ingest-and-materialize)
+#    1. Restore the Parquet ledger from GitHub Actions cache
+#       → ledger accumulates across runs without being committed to git
+#    2. Run scripts/backfill.py for the last 16 days
+#       → overlapping window ensures no gaps across midnight boundaries
+#    3. Run scripts/materialize.py (DuckDB) → data/views/*.json
+#    4. Save the updated ledger back to cache
+#    5. Commit data/views/*.json to main (only the small pre-aggregated JSON
+#       files land in git — the raw Parquet ledger stays cache-only)
+#
+#  Job 2  (deploy-dashboard) — depends on job 1
+#    1. Checkout main (which now has fresh data/views/*.json)
+#    2. Copy dashboard source (client/ server/ scripts/ data/views/) into
+#       a self-contained Vite build
+#    3. Embed data/views/*.json as static assets alongside the React bundle
+#       → the deployed site is purely static: no Express server needed
+#    4. Push to GitHub Pages via actions/deploy-pages
+#
+#  Triggers
+#  ────────
+#  schedule   midnight UTC every day (00:00)
+#  workflow_dispatch  manual run with optional --start override
+#  push to main  runs deploy-only (skips ingest) so the site reflects any
+#                code changes immediately
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: "0 0 * * *"          # midnight UTC, every day
+  workflow_dispatch:
+    inputs:
+      backfill_start:
+        description: "Override backfill start date (YYYY-MM-DD). Leave blank for last-16-days incremental."
+        required: false
+        default: ""
+      views_only:
+        description: "Skip API fetch — only re-materialize from cached ledger"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+  push:
+    branches: [main]
+
+# Only one run at a time — if a scheduled run is in progress when a push
+# arrives, cancel the older run to avoid concurrent ledger writes.
+concurrency:
+  group: gridwatch-refresh
+  cancel-in-progress: false    # don't cancel in-progress ingest (data loss risk)
+
+permissions:
+  contents: write              # push commits back to main
+  pages: write                 # deploy to GitHub Pages
+  id-token: write              # OIDC token for Pages deployment
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  ENVIRONMENT DEFAULTS
+# ─────────────────────────────────────────────────────────────────────────────
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  # Ledger cache key rotates weekly so the cache file stays manageable.
+  # If the weekly key misses, fall back to the previous week's key.
+  # The ledger is append-only so a cache hit always gives a valid starting point.
+  LEDGER_CACHE_KEY: gridwatch-ledger-${{ github.ref_name }}-${{ github.run_number }}
+  LEDGER_RESTORE_KEY: gridwatch-ledger-${{ github.ref_name }}-
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  #  JOB 1 — Ingest + Materialize
+  #  Runs on: schedule, workflow_dispatch
+  #  Skipped on: plain push to main (deploy-dashboard handles that directly)
+  # ───────────────────────────────────────────────────────────────────────────
+  ingest-and-materialize:
+    name: "📥 Ingest → 🔄 Materialize → 💾 Commit views"
+    runs-on: ubuntu-latest
+    # Skip on plain push — those only need a redeploy, not a new ingest
+    if: github.event_name != 'push'
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          # Use a PAT so the commit we push back in step 9 triggers the
+          # deploy-dashboard job's push trigger.
+          # If you don't need that, the default GITHUB_TOKEN is fine.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Set up Python ───────────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: scripts/requirements.txt
+
+      # ── 3. Install Python dependencies ────────────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      # ── 4. Restore Parquet ledger from cache ──────────────────────────────
+      # The ledger is NOT committed to git (it can grow to gigabytes).
+      # GitHub Actions cache gives us up to 10 GB per repo — plenty for years
+      # of daily-interval NEM data.
+      # Cache key uses run_number so each run saves a new entry; the restore
+      # key prefix matches any previous run's entry.
+      - name: Restore Parquet ledger cache
+        id: ledger-cache
+        uses: actions/cache@v4
+        with:
+          path: data/ledger
+          key: ${{ env.LEDGER_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.LEDGER_RESTORE_KEY }}
+
+      - name: Show ledger status
+        run: |
+          echo "Cache hit: ${{ steps.ledger-cache.outputs.cache-hit }}"
+          echo "Parquet files in ledger:"
+          ls data/ledger/*.parquet 2>/dev/null | wc -l || echo "0 (fresh start)"
+          du -sh data/ledger/ 2>/dev/null || echo "empty"
+
+      # ── 5. Fetch incremental data from Pro API ────────────────────────────
+      - name: Run backfill.py (incremental ingest)
+        if: inputs.views_only != 'true'
+        env:
+          OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
+        run: |
+          # Use manual override start if provided, otherwise last 16 days.
+          # 16-day window (vs 7) ensures we always catch late-arriving data
+          # and cover any timezone edge cases around midnight UTC/AEST.
+          if [ -n "${{ inputs.backfill_start }}" ]; then
+            START="${{ inputs.backfill_start }}"
+            echo "Manual backfill start: $START"
+          else
+            START=$(python3 -c "
+          from datetime import date, timedelta
+          print((date.today() - timedelta(days=16)).isoformat())
+          ")
+            echo "Incremental start: $START"
+          fi
+
+          python scripts/backfill.py \
+            --start "$START" \
+            --interval 1d \
+            --verbose
+
+      - name: Show updated ledger size
+        if: inputs.views_only != 'true'
+        run: |
+          echo "Parquet files after ingest:"
+          ls data/ledger/*.parquet 2>/dev/null | wc -l || echo "0"
+          du -sh data/ledger/ 2>/dev/null || echo "empty"
+
+      # ── 6. Materialize DuckDB views → data/views/*.json ───────────────────
+      - name: Run materialize.py (DuckDB → JSON views)
+        run: |
+          python scripts/materialize.py --verbose
+          echo "Views produced:"
+          ls -lh data/views/*.json
+
+      # ── 7. Save updated ledger to cache ───────────────────────────────────
+      # Always save even if a later step fails — partial progress is valuable.
+      - name: Save Parquet ledger to cache
+        if: always() && inputs.views_only != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data/ledger
+          key: ${{ env.LEDGER_CACHE_KEY }}
+
+      # ── 8. Commit data/views/*.json back to main ──────────────────────────
+      # Only the small JSON view files (a few MB total) are committed.
+      # The raw Parquet ledger stays cache-only.
+      - name: Configure git identity
+        run: |
+          git config user.name  "GridWatch Bot"
+          git config user.email "gridwatch-bot@github-actions"
+
+      - name: Commit and push updated views
+        run: |
+          git add data/views/
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "No changes to views — skipping commit"
+          else
+            TIMESTAMP=$(python3 -c "from datetime import datetime, UTC; print(datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC'))")
+            EVENTS=$(python3 -c "
+          import json, pathlib
+          lu = pathlib.Path('data/views/last_updated.json')
+          if lu.exists():
+              d = json.loads(lu.read_text())
+              print(f\"{d.get('total_events',0):,} events | {d.get('first_date','')} → {d.get('last_date','')}\")
+          else:
+              print('unknown')
+          ")
+            git commit -m "chore(data): refresh views ${TIMESTAMP}
+
+          ${EVENTS}
+
+          [skip ci]"
+            git push origin main
+            echo "✓ Views committed and pushed"
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────────
+  #  JOB 2 — Build React dashboard + Deploy to GitHub Pages
+  #  Runs: after job 1 succeeds, OR on any push to main
+  # ───────────────────────────────────────────────────────────────────────────
+  deploy-dashboard:
+    name: "🏗️  Build → 🚀 Deploy to GitHub Pages"
+    runs-on: ubuntu-latest
+
+    # Run after ingest (scheduled/dispatch), or directly on push
+    needs: [ingest-and-materialize]
+    if: |
+      always() &&
+      (
+        github.event_name == 'push' ||
+        needs.ingest-and-materialize.result == 'success' ||
+        needs.ingest-and-materialize.result == 'skipped'
+      )
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # ── 1. Checkout (with latest views committed by job 1) ────────────────
+      - name: Checkout repository (with latest views)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: main       # always deploy from main tip (includes fresh views)
+
+      # ── 2. Set up Node ────────────────────────────────────────────────────
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: dashboard/package-lock.json
+
+      # ── 3. Install Node dependencies ──────────────────────────────────────
+      - name: Install Node dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      # ── 4. Copy view data into the dashboard build ────────────────────────
+      # The Vite build embeds data/views/*.json as static files that the
+      # deployed Pages site can fetch from /data/views/*.json — no Express
+      # server needed.  The React frontend's useViews hooks already point to
+      # /api/views/:name; we adjust the base URL for Pages in step 5.
+      - name: Copy materialized views into dashboard public dir
+        run: |
+          mkdir -p dashboard/client/public/data/views
+          if ls data/views/*.json 1>/dev/null 2>&1; then
+            cp data/views/*.json dashboard/client/public/data/views/
+            echo "Copied views:"
+            ls -lh dashboard/client/public/data/views/
+          else
+            echo "No views yet — building with empty data (fresh install)"
+          fi
+
+      # ── 5. Build the dashboard ────────────────────────────────────────────
+      - name: Build React dashboard
+        working-directory: dashboard
+        env:
+          # Tell the build which GitHub Pages URL to serve from so asset
+          # paths are correct.  Format: https://<owner>.github.io/<repo>/
+          VITE_BASE_URL: ${{ format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+          NODE_ENV: production
+        run: npm run build
+
+      # ── 6. Set up Pages ───────────────────────────────────────────────────
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # ── 7. Upload Pages artifact ──────────────────────────────────────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/dist/public
+
+      # ── 8. Deploy to GitHub Pages ─────────────────────────────────────────
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Show deployed URL
+        run: echo "🌐 Deployed → ${{ steps.deployment.outputs.page_url }}"
