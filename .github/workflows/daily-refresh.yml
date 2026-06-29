@@ -285,11 +285,10 @@ jobs:
       - name: Build React dashboard
         working-directory: dashboard
         env:
-          # Tell the build which GitHub Pages URL to serve from so asset
-          # paths are correct.  Format: https://<owner>.github.io/<repo>/
-          VITE_BASE_URL: ${{ format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+          # Static Pages build — sets VITE_STATIC_DATA_MODE=true so the
+          # frontend fetches ./data/views/*.json instead of Express endpoints.
           NODE_ENV: production
-        run: npm run build
+        run: npm run build:pages
 
       # ── 6. Set up Pages ───────────────────────────────────────────────────
       - name: Configure GitHub Pages
