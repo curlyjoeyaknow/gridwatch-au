@@ -261,7 +261,8 @@ def run_backfill(
             events = payload_to_events(payload, region, batch_id, ingested_at)
             if events:
                 ledger.append(events)
-                region_events += events_count = len(events)
+                events_count = len(events)
+                region_events += events_count
                 logger.info(f"  → {events_count} events appended")
             else:
                 logger.warning(f"  → 0 events (empty payload?)")
