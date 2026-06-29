@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSummary, useLive, useLastUpdated, useGrain } from "@/hooks/useViews";
 import {
   NEM_REGIONS, REGION_NAMES, REGION_SHORT, STATE_COLORS, FUEL_META,
-  fmt, fmtMWh, fmtPrice, fmtPct, renewableColor,
+  fmt, fmtMWh, fmtPrice, fmtPct, renewableColor, formatPeriod,
   nationalAggregate, allFuels,
   type RegionCode, type RegionSummary
 } from "@/lib/views";
@@ -71,69 +71,98 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+type RangeKey = "1M" | "YTD" | "1Y" | "5Y" | "All";
+
+const RANGE_LABELS: RangeKey[] = ["1M", "YTD", "1Y", "5Y", "All"];
+
+/** Return the ISO month string (YYYY-MM) that is `months` ago from now. */
+function monthsAgo(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return d.toISOString().slice(0, 7);
+}
+
+function rangeStart(range: RangeKey): string {
+  const now = new Date();
+  if (range === "1M")  return monthsAgo(1);
+  if (range === "YTD") return `${now.getFullYear()}-01`;
+  if (range === "1Y")  return monthsAgo(12);
+  if (range === "5Y")  return monthsAgo(60);
+  return "";  // All — no cutoff
+}
+
 export default function Dashboard() {
   const { data: summaries, isLoading: sumLoading } = useSummary();
   const { data: live, fetchStatus: liveFetchStatus } = useLive();
   const { data: lastUpdated } = useLastUpdated();
   const { data: monthlyView } = useGrain("monthly");
   const [fuelRegion, setFuelRegion] = useState<"national" | RegionCode>("national");
+  const [range, setRange] = useState<RangeKey>("YTD");
 
   // liveFetchStatus is "idle" when enabled:false — never block on it
   const isLoading = sumLoading;
 
-  // Use ledger summaries if available, otherwise fall back to live 7d data
-  const displaySummaries: RegionSummary[] = summaries?.length
-    ? summaries
-    : live?.regions
-      ? Object.values(live.regions).filter(Boolean) as RegionSummary[]
-      : [];
-
   const hasLedger = !!summaries?.length;
-  const dataSource = hasLedger ? "ledger" : "live_7d";
 
-  // Aggregate national
-  const totalGen = displaySummaries.reduce((s, r) => s + r.total_generation_mwh, 0);
-  const totalRen = displaySummaries.reduce((s, r) => s + r.renewable_generation_mwh, 0);
+  // Filter monthly rows to the selected range
+  const allMonthlyNat = monthlyView ? nationalAggregate(monthlyView) : [];
+  const cutoff = rangeStart(range);
+  const filteredMonthly = cutoff
+    ? allMonthlyNat.filter(r => r.period >= cutoff)
+    : allMonthlyNat;
+
+  // Derive KPIs from filtered monthly rows
+  const totalGen   = filteredMonthly.reduce((s, r) => s + (r.total_gen_mwh ?? 0), 0);
+  const totalRen   = filteredMonthly.reduce((s, r) => s + ((r.total_gen_mwh ?? 0) * (r.renewable_share_pct ?? 0) / 100), 0);
   const nationalPct = totalGen > 0 ? (totalRen / totalGen) * 100 : 0;
-  const totalEmit = displaySummaries.reduce((s, r) => s + r.total_emissions_tco2e, 0);
-  const prices = displaySummaries.map(r => r.avg_price).filter((p): p is number => p !== null);
-  const avgPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null;
+  const totalEmit  = filteredMonthly.reduce((s, r) => s + (r.total_emissions_tco2e ?? 0), 0);
+  const prices     = filteredMonthly.map(r => r.avg_price).filter((p): p is number => p !== null && p !== undefined);
+  const avgPrice   = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null;
 
-  // Date range badge
-  const firstDate = lastUpdated?.first_date ?? summaries?.[0]?.first_date;
-  const lastDate  = lastUpdated?.last_date  ?? summaries?.[0]?.last_date;
-
-  // Bar chart: renewable % by region
+  // Per-region renewable % for the range (from monthly filtered by region)
   const barData = NEM_REGIONS.map(code => {
-    const s = displaySummaries.find(x => x.region === code);
-    return { region: code, pct: s?.renewable_share_pct ?? 0 };
+    if (!monthlyView) return { region: code, pct: 0 };
+    const regionRows = (monthlyView.regions?.[code] ?? []).filter((r: any) => !cutoff || r.period >= cutoff);
+    const gen = regionRows.reduce((s: number, r: any) => s + (r.total_gen_mwh ?? 0), 0);
+    const ren = regionRows.reduce((s: number, r: any) => s + ((r.total_gen_mwh ?? 0) * (r.renewable_share_pct ?? 0) / 100), 0);
+    return { region: code, pct: gen > 0 ? (ren / gen) * 100 : 0 };
   });
 
-  // Fuel mix pie for selected view
+  // Per-region gauge % (same logic)
+  const regionPct = (code: RegionCode): number => {
+    if (!monthlyView) { const s = summaries?.find(x => x.region === code); return s?.renewable_share_pct ?? 0; }
+    const regionRows = (monthlyView.regions?.[code] ?? []).filter((r: any) => !cutoff || r.period >= cutoff);
+    const gen = regionRows.reduce((s: number, r: any) => s + (r.total_gen_mwh ?? 0), 0);
+    const ren = regionRows.reduce((s: number, r: any) => s + ((r.total_gen_mwh ?? 0) * (r.renewable_share_pct ?? 0) / 100), 0);
+    return gen > 0 ? (ren / gen) * 100 : 0;
+  };
+
+  // Fuel mix from summary (whole-ledger — no range filter available at this grain)
+  const displaySummaries: RegionSummary[] = summaries?.length ? summaries
+    : live?.regions ? Object.values(live.regions).filter(Boolean) as RegionSummary[] : [];
   const fuelMixSrc = fuelRegion === "national" ? displaySummaries : displaySummaries.filter(s => s.region === fuelRegion);
   const fuelMixData = (() => {
     const totals: Record<string, number> = {};
-    for (const s of fuelMixSrc) {
-      for (const [cat, mwh] of Object.entries(s.by_category_mwh ?? {})) {
+    for (const s of fuelMixSrc)
+      for (const [cat, mwh] of Object.entries(s.by_category_mwh ?? {}))
         totals[cat] = (totals[cat] ?? 0) + mwh;
-      }
-    }
     return Object.entries(totals)
       .filter(([, v]) => v > 100)
-      .map(([cat, v]) => ({
-        name: FUEL_META[cat]?.label ?? cat,
-        value: Math.round(v),
-        color: FUEL_META[cat]?.color ?? "#94a3b8",
-      }))
+      .map(([cat, v]) => ({ name: FUEL_META[cat]?.label ?? cat, value: Math.round(v), color: FUEL_META[cat]?.color ?? "#94a3b8" }))
       .sort((a, b) => b.value - a.value);
   })();
 
-  // Monthly renewable trend (last 24 months)
-  const monthlyTrendData = (() => {
-    if (!monthlyView) return [];
-    const natRows = nationalAggregate(monthlyView).slice(-24);
-    return natRows.map(r => ({ period: r.period, pct: Math.round(r.renewable_share_pct * 10) / 10 }));
-  })();
+  // Monthly trend line for selected range
+  const monthlyTrendData = filteredMonthly.map(r => ({
+    period: formatPeriod(r.period, "monthly"),
+    pct: Math.round((r.renewable_share_pct ?? 0) * 10) / 10,
+  }));
+
+  // Date range badge from filtered data
+  const filteredFirstDate = filteredMonthly[0]?.period ?? lastUpdated?.first_date;
+  const filteredLastDate  = filteredMonthly[filteredMonthly.length - 1]?.period ?? lastUpdated?.last_date;
+  const allFirstDate = lastUpdated?.first_date ?? summaries?.[0]?.first_date;
+  const allLastDate  = lastUpdated?.last_date  ?? summaries?.[0]?.last_date;
 
   if (isLoading) return (
     <div className="p-6 space-y-5">
@@ -153,54 +182,74 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">NEM Overview</h1>
           <p className="text-sm text-muted-foreground mt-0.5">National Electricity Market — Australia</p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          {hasLedger && firstDate && lastDate ? (
-            <Badge variant="outline" className="text-xs gap-1.5">
-              <Database className="w-3 h-3" />
-              {firstDate} → {lastDate}
-              <span className="text-muted-foreground">({lastUpdated?.total_events?.toLocaleString()} events)</span>
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-xs gap-1.5 text-amber-600 border-amber-300">
-              <Wifi className="w-3 h-3" />
-              Live 7d only — run backfill.py for history
-            </Badge>
-          )}
+
+        {/* Range selector */}
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          {RANGE_LABELS.map(r => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={[
+                "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                range === r
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {r}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Data range info */}
+      {hasLedger && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Database className="w-3 h-3" />
+          <span>
+            Showing {filteredFirstDate} → {filteredLastDate}
+            {range === "All" && allFirstDate && (
+              <span className="ml-1 opacity-60">(full ledger: {allFirstDate} → {allLastDate}, {lastUpdated?.total_events?.toLocaleString()} events)</span>
+            )}
+          </span>
+        </div>
+      )}
+      {!hasLedger && (
+        <Badge variant="outline" className="text-xs gap-1.5 text-amber-600 border-amber-300 w-fit">
+          <Wifi className="w-3 h-3" />
+          Live 7d only — run backfill.py for history
+        </Badge>
+      )}
 
       {/* National KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="National Renewable %" value={fmtPct(nationalPct)} icon={Leaf} color="#10b981"
           sub={`${fmtMWh(totalRen)} of ${fmtMWh(totalGen)}`} />
         <KpiCard label="Total Generation" value={fmtMWh(totalGen)} icon={Zap} color="#3b82f6"
-          sub={hasLedger ? `${lastUpdated?.days_covered ?? "?"} days of data` : "last 7 days"} />
+          sub={`${filteredMonthly.length} months`} />
         <KpiCard label="Total Emissions" value={`${fmt(totalEmit / 1000, 1)}k tCO₂e`} icon={Wind} color="#f97316"
           sub="dispatchable generation" />
         <KpiCard label="Avg Wholesale Price" value={fmtPrice(avgPrice)} icon={Activity} color="#8b5cf6"
           sub="NEM average" />
       </div>
 
-      {/* State gauges + national */}
+      {/* State gauges */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Leaf className="w-4 h-4 text-emerald-600" />
             Renewable Share by State
-            {hasLedger && <span className="text-muted-foreground font-normal text-xs">— full ledger period</span>}
+            <span className="text-muted-foreground font-normal text-xs">— {range === "All" ? "full ledger" : range}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {NEM_REGIONS.map(code => {
-              const s = displaySummaries.find(x => x.region === code);
-              return (
-                <RenewableGauge key={code}
-                  pct={s?.renewable_share_pct ?? 0}
-                  label={`${REGION_SHORT[code]}\n${REGION_NAMES[code]}`} />
-              );
-            })}
-            <RenewableGauge pct={nationalPct} label="NEM\nNational" />  {/* NEM = no digit suffix needed */}
+            {NEM_REGIONS.map(code => (
+              <RenewableGauge key={code}
+                pct={regionPct(code)}
+                label={`${REGION_SHORT[code]}\n${REGION_NAMES[code]}`} />
+            ))}
+            <RenewableGauge pct={nationalPct} label="NEM\nNational" />
           </div>
         </CardContent>
       </Card>
@@ -215,7 +264,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={barData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="region" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="region" tickFormatter={r => REGION_SHORT[r as RegionCode] ?? r} tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" width={36} />
                 <Tooltip content={<CustomTooltip />} formatter={(v: number) => [`${fmt(v, 1)}%`, "Renewable"]} />
                 <Bar dataKey="pct" name="Renewable %" radius={[4, 4, 0, 0]}>
@@ -234,7 +283,7 @@ export default function Dashboard() {
                 <TabsList className="h-7">
                   <TabsTrigger value="national" className="text-[10px] px-2 h-6">All</TabsTrigger>
                   {NEM_REGIONS.map(c => (
-                    <TabsTrigger key={c} value={c} className="text-[10px] px-1.5 h-6">{c.replace("1", "")}</TabsTrigger>
+                    <TabsTrigger key={c} value={c} className="text-[10px] px-1.5 h-6">{REGION_SHORT[c]}</TabsTrigger>
                   ))}
                 </TabsList>
               </Tabs>
@@ -255,13 +304,13 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Monthly renewable trend */}
+      {/* Monthly trend */}
       {monthlyTrendData.length > 2 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
               National Renewable Share — Monthly Trend
-              <span className="text-muted-foreground font-normal text-xs ml-2">last 24 months</span>
+              <span className="text-muted-foreground font-normal text-xs ml-2">{range}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -269,7 +318,7 @@ export default function Dashboard() {
               <LineChart data={monthlyTrendData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" width={36} />
+                <YAxis tick={{ fontSize: 10 }} domain={["auto", "auto"]} unit="%" width={36} />
                 <Tooltip formatter={(v: number) => [`${fmt(v, 1)}%`, "Renewable"]} />
                 <Line type="monotone" dataKey="pct" stroke="#10b981" strokeWidth={2} dot={false} name="Renewable %" />
               </LineChart>
@@ -278,10 +327,13 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Summary table */}
+      {/* Summary table — always full ledger */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">State Summary</CardTitle>
+          <CardTitle className="text-sm font-semibold">
+            State Summary
+            <span className="text-muted-foreground font-normal text-xs ml-2">— full ledger</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -305,7 +357,7 @@ export default function Dashboard() {
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ background: STATE_COLORS[code] }} />
-                          <span className="font-medium">{code}</span>
+                          <span className="font-medium">{REGION_SHORT[code]}</span>
                           <span className="text-muted-foreground text-xs hidden sm:inline">{REGION_NAMES[code]}</span>
                         </span>
                       </td>
