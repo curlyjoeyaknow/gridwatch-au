@@ -73,12 +73,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function Dashboard() {
   const { data: summaries, isLoading: sumLoading } = useSummary();
-  const { data: live, isLoading: liveLoading } = useLive();
+  const { data: live, fetchStatus: liveFetchStatus } = useLive();
   const { data: lastUpdated } = useLastUpdated();
   const { data: monthlyView } = useGrain("monthly");
   const [fuelRegion, setFuelRegion] = useState<"national" | RegionCode>("national");
 
-  const isLoading = sumLoading || liveLoading;
+  // liveFetchStatus is "idle" when enabled:false — never block on it
+  const isLoading = sumLoading;
 
   // Use ledger summaries if available, otherwise fall back to live 7d data
   const displaySummaries: RegionSummary[] = summaries?.length
